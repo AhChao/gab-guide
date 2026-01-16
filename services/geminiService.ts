@@ -18,14 +18,14 @@ export const analyzeMessage = async (apiKey: string, model: GeminiModel, message
     model,
     contents: `Analyze this English learner's sentence: "${message}" within the context of this conversation: "${context}". Provide a detailed linguistic analysis.`,
     config: {
-      systemInstruction: `You are an expert English language coach. Analyze the user's sentence for grammar, naturalness, and small talk effectiveness. 
+      systemInstruction: `You are an expert English language coach helping an English learner practice small talk. Analyze the learner's sentence for grammar, naturalness, and small talk effectiveness. 
       Return JSON format. 
       - grammarErrors: Detail any mistakes or awkward phrasing.
       - grammarScore: A score from 1 (poor) to 10 (perfect).
       - naturalnessRating: Evaluate how a native speaker would perceive this.
       - naturalnessScore: A score from 1 (robotic/awkward) to 10 (completely native).
-      - improvement: Provide a simpler, more natural way to say it.
-      - extensions: Suggest how to expand the conversation/small talk.
+      - improvement: Provide a simpler, more natural way to say the same thing.
+      - extensions: Suggest what the LEARNER could say next to keep the conversation going. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
       - isNatural: true if no changes needed, false otherwise.`,
       responseMimeType: "application/json",
       responseSchema: {
@@ -75,15 +75,15 @@ export const analyzeBatchMessages = async (
 Messages to analyze:
 ${JSON.stringify(messagesForPrompt, null, 2)}`,
     config: {
-      systemInstruction: `You are an expert English language coach. For EACH message provided, analyze for grammar, naturalness, and small talk effectiveness.
+      systemInstruction: `You are an expert English language coach helping an English learner practice small talk. For EACH message provided, analyze for grammar, naturalness, and small talk effectiveness.
       Return a JSON array where each object has:
       - id: The message id provided.
       - grammarErrors: Detail any mistakes or awkward phrasing.
       - grammarScore: A score from 1 (poor) to 10 (perfect).
       - naturalnessRating: Evaluate how a native speaker would perceive this.
       - naturalnessScore: A score from 1 (robotic/awkward) to 10 (completely native).
-      - improvement: Provide a simpler, more natural way to say it.
-      - extensions: Suggest how to expand the conversation/small talk.
+      - improvement: Provide a simpler, more natural way to say the same thing.
+      - extensions: Suggest what the LEARNER could say next to keep the conversation going. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
       - isNatural: true if no changes needed, false otherwise.`,
       responseMimeType: "application/json",
       responseSchema: {
