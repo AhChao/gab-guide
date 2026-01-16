@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GeminiModel, Message } from '../types';
+import { GeminiModel, Message } from '../types/index';
 
 // Create a mock for generateContent that can be controlled per test
 const mockGenerateContent = vi.fn();

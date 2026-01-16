@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ConversationSummary } from '../types';
+import { ConversationSummary } from '../types/index';
 import { getScoreColorClass } from '../utils/scoreUtils';
 
 interface SummaryModalProps {

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AnalysisResult, AnalysisState } from '../types';
+import { AnalysisResult, AnalysisState } from '../types/index';
 
 interface AnalysisDrawerProps {
   analysis: AnalysisResult | null;
@@ -35,7 +35,7 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ analysis, state,
           </svg>
           Linguistic Insights
         </h3>
-        <button 
+        <button
           onClick={onClose}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
         >

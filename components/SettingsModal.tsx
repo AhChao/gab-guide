@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { GeminiModel } from '../types';
+import { GeminiModel } from '../types/index';
 
 interface SettingsModalProps {
   currentKey: string;

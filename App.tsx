@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Message, AnalysisResult, AnalysisState, ConversationSummary, Conversation, AppSettings, GeminiModel } from './types';
+import { Message, AnalysisResult, AnalysisState, ConversationSummary, Conversation, AppSettings, GeminiModel } from './types/index';
 import { ChatBubble } from './components/ChatBubble';
 import { AnalysisDrawer } from './components/AnalysisDrawer';
 import { SummaryModal } from './components/SummaryModal';

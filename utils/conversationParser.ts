@@ -1,4 +1,4 @@
-import { Message } from '../types';
+import { Message } from '../types/index';
 
 /**
  * Parse conversation text input into structured Message objects.

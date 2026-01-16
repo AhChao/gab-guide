@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, ConversationSummary, GeminiModel, Message } from "../types";
+import { AnalysisResult, ConversationSummary, GeminiModel, Message } from "../types/index";
 
 export const MAX_CONTEXT_MESSAGES = 10;
 
