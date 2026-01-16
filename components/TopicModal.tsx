@@ -24,17 +24,38 @@ const CONVERSATION_STYLES = [
 
 // MBTI types
 const MBTI_TYPES = [
-    'INTJ', 'INTP', 'ENTJ', 'ENTP',
-    'INFJ', 'INFP', 'ENFJ', 'ENFP',
-    'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
-    'ISTP', 'ISFP', 'ESTP', 'ESFP',
+    { id: 'INTJ', label: 'INTJ – Architect' },
+    { id: 'INTP', label: 'INTP – Logician' },
+    { id: 'ENTJ', label: 'ENTJ – Commander' },
+    { id: 'ENTP', label: 'ENTP – Debater' },
+    { id: 'INFJ', label: 'INFJ – Advocate' },
+    { id: 'INFP', label: 'INFP – Mediator' },
+    { id: 'ENFJ', label: 'ENFJ – Protagonist' },
+    { id: 'ENFP', label: 'ENFP – Campaigner' },
+    { id: 'ISTJ', label: 'ISTJ – Logistician' },
+    { id: 'ISFJ', label: 'ISFJ – Defender' },
+    { id: 'ESTJ', label: 'ESTJ – Executive' },
+    { id: 'ESFJ', label: 'ESFJ – Consul' },
+    { id: 'ISTP', label: 'ISTP – Virtuoso' },
+    { id: 'ISFP', label: 'ISFP – Adventurer' },
+    { id: 'ESTP', label: 'ESTP – Entrepreneur' },
+    { id: 'ESFP', label: 'ESFP – Entertainer' },
 ];
 
 // Star signs
 const STAR_SIGNS = [
-    'Aries', 'Taurus', 'Gemini', 'Cancer',
-    'Leo', 'Virgo', 'Libra', 'Scorpio',
-    'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+    { id: 'Aries', label: 'Aries ♈' },
+    { id: 'Taurus', label: 'Taurus ♉' },
+    { id: 'Gemini', label: 'Gemini ♊' },
+    { id: 'Cancer', label: 'Cancer ♋' },
+    { id: 'Leo', label: 'Leo ♌' },
+    { id: 'Virgo', label: 'Virgo ♍' },
+    { id: 'Libra', label: 'Libra ♎' },
+    { id: 'Scorpio', label: 'Scorpio ♏' },
+    { id: 'Sagittarius', label: 'Sagittarius ♐' },
+    { id: 'Capricorn', label: 'Capricorn ♑' },
+    { id: 'Aquarius', label: 'Aquarius ♒' },
+    { id: 'Pisces', label: 'Pisces ♓' },
 ];
 
 export const TopicModal: React.FC<TopicModalProps> = ({ onClose }) => {
@@ -61,7 +82,6 @@ export const TopicModal: React.FC<TopicModalProps> = ({ onClose }) => {
         }
     };
 
-    // Build the ChatGPT prompt
     const buildPrompt = () => {
         const styleConfig = CONVERSATION_STYLES.find(s => s.value === conversationStyle);
         const stylePrompt = styleConfig?.prompt || '';
@@ -69,8 +89,14 @@ export const TopicModal: React.FC<TopicModalProps> = ({ onClose }) => {
         let personalityPrompt = '';
         if (useMbti || useStarSign) {
             const traits: string[] = [];
-            if (useMbti) traits.push(`${mbtiType} personality`);
-            if (useStarSign) traits.push(`${starSign} energy`);
+            if (useMbti) {
+                const mbti = MBTI_TYPES.find(t => t.id === mbtiType);
+                traits.push(`${mbti?.label || mbtiType} personality`);
+            }
+            if (useStarSign) {
+                const star = STAR_SIGNS.find(s => s.id === starSign);
+                traits.push(`${star?.label || starSign} energy`);
+            }
             personalityPrompt = ` Roleplay with a ${traits.join(' and ')} vibe.`;
         }
 
@@ -178,7 +204,7 @@ When I say "let's start", ask me this question in a casual, friendly way. Keep t
                                                 className="w-full px-2 py-1.5 bg-white border border-purple-200 rounded-lg text-xs focus:ring-2 focus:ring-purple-500"
                                             >
                                                 {MBTI_TYPES.map(type => (
-                                                    <option key={type} value={type}>{type}</option>
+                                                    <option key={type.id} value={type.id}>{type.label}</option>
                                                 ))}
                                             </select>
                                         )}
@@ -202,7 +228,7 @@ When I say "let's start", ask me this question in a casual, friendly way. Keep t
                                                 className="w-full px-2 py-1.5 bg-white border border-purple-200 rounded-lg text-xs focus:ring-2 focus:ring-purple-500"
                                             >
                                                 {STAR_SIGNS.map(sign => (
-                                                    <option key={sign} value={sign}>{sign}</option>
+                                                    <option key={sign.id} value={sign.id}>{sign.label}</option>
                                                 ))}
                                             </select>
                                         )}
