@@ -15,7 +15,7 @@ const STORAGE_KEY_SETTINGS = 'gab_guide_settings';
 
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
-  model: GeminiModel.FLASH,
+  model: GeminiModel.GEMINI_3_FLASH_PREVIEW,
   colorByScoring: ColorByScoring.AFTER_READ
 };
 
@@ -53,6 +53,7 @@ const App: React.FC = () => {
   const [convIdToDelete, setConvIdToDelete] = useState<string | null>(null);
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Derived state
   const activeConversation = conversations.find(c => c.id === currentConvId);
@@ -155,8 +156,10 @@ const App: React.FC = () => {
       });
       setAnalysis(result);
       setAnalysisState(AnalysisState.SUCCESS);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      const errorMessage = error?.message || "An unexpected error occurred during analysis.";
+      setApiError(errorMessage);
       setAnalysisState(AnalysisState.ERROR);
     }
   };
@@ -210,8 +213,9 @@ const App: React.FC = () => {
       });
 
       updateActiveConversation({ messages: updatedMessages });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setApiError(err?.message || "An unexpected error occurred during batch analysis.");
     }
 
     setIsAnalyzingAll(false);
@@ -233,8 +237,9 @@ const App: React.FC = () => {
       updateActiveConversation({ summary: resSummary, title: resTitle });
       setShowSummary(true);
       return resSummary;
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setApiError(error?.message || "An unexpected error occurred while generating summary.");
       return null;
     } finally {
       setIsSummaryLoading(false);
@@ -720,6 +725,17 @@ const App: React.FC = () => {
           confirmVariant="danger"
           onConfirm={resetAllHistory}
           onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
+
+      {apiError && (
+        <ConfirmModal
+          title="AI Analysis Error"
+          message={apiError}
+          confirmLabel="Close"
+          confirmVariant="primary"
+          onConfirm={() => setApiError(null)}
+          onCancel={() => setApiError(null)}
         />
       )}
 

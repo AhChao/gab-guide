@@ -11,9 +11,13 @@ interface SettingsModalProps {
 }
 
 const MODEL_OPTIONS: { value: GeminiModel; label: string; description: string }[] = [
-  { value: GeminiModel.FLASH, label: 'Gemini 2.0 Flash', description: 'Balanced speed & quality' },
-  { value: GeminiModel.FLASH_LITE, label: 'Gemini 2.0 Flash Lite', description: 'Fastest, lowest latency' },
-  { value: GeminiModel.FLASH_PREVIEW, label: 'Gemini 3 Flash Preview', description: 'Latest, best reasoning' },
+  { value: GeminiModel.GEMINI_3_FLASH_PREVIEW, label: 'Gemini 3 Flash Preview', description: 'Latest v3 model, optimized for speed and reasoning' },
+  { value: GeminiModel.GEMINI_3_PRO_PREVIEW, label: 'Gemini 3 Pro Preview', description: 'Most capable v3 model for complex tasks' },
+  { value: GeminiModel.GEMINI_2_0_FLASH, label: 'Gemini 2.0 Flash', description: 'Fast and balanced (v2.0)' },
+  { value: GeminiModel.GEMINI_2_0_FLASH_LITE, label: 'Gemini 2.0 Flash Lite', description: 'Highly efficient, low latency (v2.0)' },
+  { value: GeminiModel.GEMINI_2_5_PRO, label: 'Gemini 2.5 Pro', description: 'Advanced reasoning and capability (v2.5)' },
+  { value: GeminiModel.GEMINI_2_5_FLASH_LITE, label: 'Gemini 2.5 Flash Lite', description: 'Fastest v2.5 model' },
+  { value: GeminiModel.GEMINI_2_5_FLASH_PREVIEW, label: 'Gemini 2.5 Flash Preview', description: 'Cutting-edge v2.5 features' },
 ];
 
 const COLOR_OPTIONS: { value: ColorByScoring; label: string; description: string }[] = [
