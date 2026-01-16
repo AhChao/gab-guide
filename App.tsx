@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Message, AnalysisResult, AnalysisState, ConversationSummary, Conversation, AppSettings, GeminiModel } from './types/index';
+import { Message, AnalysisResult, AnalysisState, ConversationSummary, Conversation, AppSettings, GeminiModel, ColorByScoring } from './types/index';
 import { ChatBubble } from './components/ChatBubble';
 import { AnalysisDrawer } from './components/AnalysisDrawer';
 import { SummaryModal } from './components/SummaryModal';
@@ -14,7 +14,8 @@ const STORAGE_KEY_SETTINGS = 'gab_guide_settings';
 
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
-  model: GeminiModel.FLASH
+  model: GeminiModel.FLASH,
+  colorByScoring: ColorByScoring.AFTER_READ
 };
 
 const App: React.FC = () => {
@@ -638,6 +639,7 @@ const App: React.FC = () => {
                     isChecked={checkedMessageIds.has(msg.id)}
                     onToggleCheck={handleToggleMessageCheck}
                     onClick={handleMessageClick}
+                    colorByScoring={settings.colorByScoring}
                   />
                 ))}
               </div>
@@ -677,7 +679,8 @@ const App: React.FC = () => {
         <SettingsModal
           currentKey={settings.apiKey}
           currentModel={settings.model}
-          onSave={(key, model) => { setSettings({ apiKey: key, model }); setIsSettingsOpen(false); }}
+          currentColorByScoring={settings.colorByScoring}
+          onSave={(key, model, colorByScoring) => { setSettings({ apiKey: key, model, colorByScoring }); setIsSettingsOpen(false); }}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

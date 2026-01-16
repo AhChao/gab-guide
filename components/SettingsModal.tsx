@@ -1,11 +1,12 @@
 
 import React, { useState } from 'react';
-import { GeminiModel } from '../types/index';
+import { GeminiModel, ColorByScoring } from '../types/index';
 
 interface SettingsModalProps {
   currentKey: string;
   currentModel: GeminiModel;
-  onSave: (key: string, model: GeminiModel) => void;
+  currentColorByScoring: ColorByScoring;
+  onSave: (key: string, model: GeminiModel, colorByScoring: ColorByScoring) => void;
   onClose: () => void;
 }
 
@@ -15,14 +16,27 @@ const MODEL_OPTIONS: { value: GeminiModel; label: string; description: string }[
   { value: GeminiModel.FLASH_PREVIEW, label: 'Gemini 3 Flash Preview', description: 'Latest, best reasoning' },
 ];
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, currentModel, onSave, onClose }) => {
+const COLOR_OPTIONS: { value: ColorByScoring; label: string; description: string }[] = [
+  { value: ColorByScoring.ALWAYS, label: 'Always', description: 'Color when analyzed' },
+  { value: ColorByScoring.AFTER_READ, label: 'After Review', description: 'Color after you view the score' },
+  { value: ColorByScoring.NEVER, label: 'Never', description: 'No coloring' },
+];
+
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  currentKey,
+  currentModel,
+  currentColorByScoring,
+  onSave,
+  onClose
+}) => {
   const [key, setKey] = useState(currentKey);
   const [model, setModel] = useState<GeminiModel>(currentModel);
+  const [colorByScoring, setColorByScoring] = useState<ColorByScoring>(currentColorByScoring);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-800">Settings</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
             <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,7 +44,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, curren
             </svg>
           </button>
         </div>
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto">
           <div className="space-y-2">
             <label className="text-sm font-bold text-gray-700 block">Google AI Studio API Key</label>
             <input
@@ -58,6 +72,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, curren
             </select>
           </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 block">Color By Scoring</label>
+            <select
+              value={colorByScoring}
+              onChange={(e) => setColorByScoring(e.target.value as ColorByScoring)}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+            >
+              {COLOR_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label} — {opt.description}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-gray-500">
+              Color the message bubble based on grammar (left) and naturalness (right) scores.
+            </p>
+          </div>
+
           <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 space-y-2">
             <div className="flex items-center text-amber-800 font-bold text-xs uppercase tracking-wider">
               <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -70,9 +100,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, curren
             </p>
           </div>
         </div>
-        <div className="p-6 bg-gray-50 flex justify-end">
+        <div className="p-6 bg-gray-50 flex justify-end flex-shrink-0">
           <button
-            onClick={() => onSave(key, model)}
+            onClick={() => onSave(key, model, colorByScoring)}
             className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md active:scale-95"
           >
             Save Changes

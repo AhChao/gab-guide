@@ -51,9 +51,16 @@ export enum GeminiModel {
     FLASH_PREVIEW = 'gemini-3-flash-preview',
 }
 
+export enum ColorByScoring {
+    ALWAYS = 'always',
+    AFTER_READ = 'afterRead',
+    NEVER = 'never',
+}
+
 export interface AppSettings {
     apiKey: string;
     model: GeminiModel;
+    colorByScoring: ColorByScoring;
 }
 
 export enum AnalysisState {
