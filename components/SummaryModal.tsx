@@ -7,6 +7,17 @@ interface SummaryModalProps {
   onClose: () => void;
 }
 
+const ScorePill: React.FC<{ score: number; label: string }> = ({ score, label }) => {
+  const colorClass = score >= 8 ? 'bg-green-100 text-green-700 border-green-200'
+    : score >= 5 ? 'bg-amber-100 text-amber-700 border-amber-200'
+      : 'bg-red-100 text-red-700 border-red-200';
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${colorClass}`}>
+      {label}: {score}/10
+    </span>
+  );
+};
+
 export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose }) => {
   if (!summary) return null;
 
@@ -29,15 +40,24 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose }) 
           {/* Performance Overview */}
           <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Grammar Skills</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Grammar Skills</h3>
+                <ScorePill score={summary.grammarScore} label="Score" />
+              </div>
               <p className="text-gray-700 leading-relaxed text-sm">{summary.grammarPerformance}</p>
             </div>
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Communication Clarity</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Communication Clarity</h3>
+                <ScorePill score={summary.clarityScore} label="Score" />
+              </div>
               <p className="text-gray-700 leading-relaxed text-sm">{summary.clarityEvaluation}</p>
             </div>
             <div className="md:col-span-2 space-y-2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Conversation Flow</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Conversation Flow</h3>
+                <ScorePill score={summary.flowScore} label="Score" />
+              </div>
               <p className="text-gray-700 leading-relaxed text-sm">{summary.flowAnalysis}</p>
             </div>
           </section>
@@ -45,8 +65,8 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose }) 
           {/* Key Strategic Tips */}
           <section className="space-y-4 pt-6 border-t border-gray-100">
             <h3 className="text-lg font-bold text-gray-800 flex items-center">
-               <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1a1 1 0 112 0v1a1 1 0 11-2 0zM13.536 14.95a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zM6.464 14.95a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707z" /></svg>
-               Strategy Improvements
+              <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1a1 1 0 112 0v1a1 1 0 11-2 0zM13.536 14.95a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zM6.464 14.95a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707z" /></svg>
+              Strategy Improvements
             </h3>
             <div className="grid grid-cols-1 gap-3">
               {summary.keySuggestions.map((tip, i) => (
@@ -81,7 +101,7 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose }) 
         </div>
 
         <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end flex-shrink-0">
-          <button 
+          <button
             onClick={onClose}
             className="px-6 py-2.5 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-900 transition-all shadow-md active:scale-95"
           >

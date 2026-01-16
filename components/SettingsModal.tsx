@@ -1,14 +1,23 @@
 
 import React, { useState } from 'react';
+import { GeminiModel } from '../types';
 
 interface SettingsModalProps {
   currentKey: string;
-  onSave: (key: string) => void;
+  currentModel: GeminiModel;
+  onSave: (key: string, model: GeminiModel) => void;
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, onSave, onClose }) => {
+const MODEL_OPTIONS: { value: GeminiModel; label: string; description: string }[] = [
+  { value: GeminiModel.FLASH, label: 'Gemini 2.0 Flash', description: 'Balanced speed & quality' },
+  { value: GeminiModel.FLASH_LITE, label: 'Gemini 2.0 Flash Lite', description: 'Fastest, lowest latency' },
+  { value: GeminiModel.FLASH_PREVIEW, label: 'Gemini 3 Flash Preview', description: 'Latest, best reasoning' },
+];
+
+export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, currentModel, onSave, onClose }) => {
   const [key, setKey] = useState(currentKey);
+  const [model, setModel] = useState<GeminiModel>(currentModel);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
@@ -24,7 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, onSave
         <div className="p-6 space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-gray-700 block">Google AI Studio API Key</label>
-            <input 
+            <input
               type="password"
               value={key}
               onChange={(e) => setKey(e.target.value)}
@@ -34,6 +43,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, onSave
             <p className="text-[10px] text-gray-500">
               Get one for free at <a href="https://aistudio.google.com/" target="_blank" className="text-blue-600 underline">aistudio.google.com</a>
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 block">AI Model</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value as GeminiModel)}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+            >
+              {MODEL_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label} — {opt.description}</option>
+              ))}
+            </select>
           </div>
 
           <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 space-y-2">
@@ -49,8 +71,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ currentKey, onSave
           </div>
         </div>
         <div className="p-6 bg-gray-50 flex justify-end">
-          <button 
-            onClick={() => onSave(key)}
+          <button
+            onClick={() => onSave(key, model)}
             className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md active:scale-95"
           >
             Save Changes

@@ -27,8 +27,11 @@ export interface VocabularySuggestion {
 
 export interface ConversationSummary {
   grammarPerformance: string;
+  grammarScore: number;
   clarityEvaluation: string;
+  clarityScore: number;
   flowAnalysis: string;
+  flowScore: number;
   keySuggestions: string[];
   suggestedVocabulary: VocabularySuggestion[];
 }
@@ -42,8 +45,15 @@ export interface Conversation {
   summary: ConversationSummary | null;
 }
 
+export enum GeminiModel {
+  FLASH = 'gemini-2.0-flash',
+  FLASH_LITE = 'gemini-2.0-flash-lite',
+  FLASH_PREVIEW = 'gemini-3-flash-preview',
+}
+
 export interface AppSettings {
   apiKey: string;
+  model: GeminiModel;
 }
 
 export enum AnalysisState {

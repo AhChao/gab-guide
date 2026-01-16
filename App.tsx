@@ -1,15 +1,20 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Message, AnalysisResult, AnalysisState, ConversationSummary, Conversation, AppSettings } from './types';
+import { Message, AnalysisResult, AnalysisState, ConversationSummary, Conversation, AppSettings, GeminiModel } from './types';
 import { ChatBubble } from './components/ChatBubble';
 import { AnalysisDrawer } from './components/AnalysisDrawer';
 import { SummaryModal } from './components/SummaryModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConfirmModal } from './components/ConfirmModal';
-import { analyzeMessage, summarizeConversation } from './services/geminiService';
+import { analyzeMessage, summarizeConversation, analyzeBatchMessages } from './services/geminiService';
 
 const STORAGE_KEY_CONVS = 'gab_guide_conversations';
 const STORAGE_KEY_SETTINGS = 'gab_guide_settings';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  apiKey: '',
+  model: GeminiModel.FLASH
+};
 
 const App: React.FC = () => {
   // Persistence State
@@ -19,7 +24,11 @@ const App: React.FC = () => {
   });
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
-    return saved ? JSON.parse(saved) : { apiKey: '' };
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
+    return DEFAULT_SETTINGS;
   });
 
   // Active Session State
@@ -58,7 +67,7 @@ const App: React.FC = () => {
   // Helper to update active conversation
   const updateActiveConversation = useCallback((updates: Partial<Conversation>) => {
     if (!currentConvId) return;
-    setConversations(prev => prev.map(c => 
+    setConversations(prev => prev.map(c =>
       c.id === currentConvId ? { ...c, ...updates, updatedAt: Date.now() } : c
     ));
   }, [currentConvId]);
@@ -96,9 +105,9 @@ const App: React.FC = () => {
         currentSpeaker = match[1];
         const speakerLower = currentSpeaker.toLowerCase();
         currentRole = (speakerLower.includes('chatgpt') || speakerLower.includes('ai')) ? 'assistant' : 'user';
-        
+
         let text = match[3].trim();
-        if (text.startsWith('“') && text.endsWith('”')) text = text.slice(1, -1);
+        if (text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1);
         if (text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1);
 
         parsed.push({
@@ -110,7 +119,7 @@ const App: React.FC = () => {
         });
       } else if (parsed.length > 0) {
         let text = line.trim();
-        if (text.startsWith('“') && text.endsWith('”')) text = text.slice(1, -1);
+        if (text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1);
         parsed[parsed.length - 1].text += '\n' + text;
       }
     });
@@ -145,7 +154,7 @@ const App: React.FC = () => {
 
   const handleMessageClick = async (msg: Message) => {
     if (msg.role !== 'user' || !checkApiKey() || isEditMode) return;
-    
+
     setSelectedMsgId(msg.id);
     if (msg.analysis) {
       setAnalysis(msg.analysis);
@@ -160,13 +169,14 @@ const App: React.FC = () => {
     setAnalysis(null);
 
     try {
+      const msgIndex = messages.findIndex(m => m.id === msg.id);
       const context = messages
-        .slice(0, messages.findIndex(m => m.id === msg.id) + 1)
+        .slice(Math.max(0, msgIndex - 9), msgIndex + 1)
         .map(m => `${m.sender}: ${m.text}`)
         .join('\n');
-      
-      const result = await analyzeMessage(settings.apiKey, msg.text, context);
-      
+
+      const result = await analyzeMessage(settings.apiKey, settings.model, msg.text, context);
+
       updateActiveConversation({
         messages: messages.map(m => m.id === msg.id ? { ...m, analysis: result, viewed: true } : m)
       });
@@ -199,30 +209,54 @@ const App: React.FC = () => {
   const handleAnalyzeAll = async () => {
     if (isAnalyzingAll || messages.length === 0 || !checkApiKey()) return;
     setIsAnalyzingAll(true);
-    
-    const messagesCopy = [...messages];
-    for (let i = 0; i < messagesCopy.length; i++) {
-      const msg = messagesCopy[i];
-      if (msg.role === 'user' && !msg.analysis) {
-        try {
-          const context = messagesCopy.slice(0, i + 1).map(m => `${m.sender}: ${m.text}`).join('\n');
-          const result = await analyzeMessage(settings.apiKey, msg.text, context);
-          messagesCopy[i] = { ...msg, analysis: result };
-          updateActiveConversation({ messages: [...messagesCopy] });
-        } catch (err) {
-          console.error(err);
-        }
+
+    try {
+      const unanalyzedUserMessages = messages
+        .map((msg, index) => ({ ...msg, index }))
+        .filter(msg => msg.role === 'user' && !msg.analysis);
+
+      if (unanalyzedUserMessages.length === 0) {
+        setIsAnalyzingAll(false);
+        return;
       }
+
+      const batchResults = await analyzeBatchMessages(
+        settings.apiKey,
+        settings.model,
+        messages,
+        unanalyzedUserMessages.map(m => ({ id: m.id, text: m.text, index: m.index }))
+      );
+
+      const analysisMap = new Map(batchResults.map(r => [r.messageId, r.analysis]));
+      const updatedMessages = messages.map(m => {
+        const analysis = analysisMap.get(m.id);
+        if (analysis) {
+          return { ...m, analysis };
+        }
+        return m;
+      });
+
+      updateActiveConversation({ messages: updatedMessages });
+    } catch (err) {
+      console.error(err);
     }
+
     setIsAnalyzingAll(false);
   };
 
   const handleSummarize = async () => {
     if (messages.length === 0 || !checkApiKey()) return null;
+
+    // If summary exists, just show it
+    if (summary) {
+      setShowSummary(true);
+      return summary;
+    }
+
     setIsSummaryLoading(true);
     try {
       const conversationText = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
-      const { summary: resSummary, title: resTitle } = await summarizeConversation(settings.apiKey, conversationText);
+      const { summary: resSummary, title: resTitle } = await summarizeConversation(settings.apiKey, settings.model, conversationText);
       updateActiveConversation({ summary: resSummary, title: resTitle });
       setShowSummary(true);
       return resSummary;
@@ -236,12 +270,12 @@ const App: React.FC = () => {
 
   const handleExportPDF = async () => {
     if (!checkApiKey()) return;
-    
+
     let activeSummary = summary;
     if (!activeSummary) {
       activeSummary = await handleSummarize();
     }
-    
+
     if (!activeSummary) return;
 
     const printWindow = window.open('', '_blank');
@@ -415,7 +449,7 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen max-h-screen bg-gray-50 overflow-hidden">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center space-x-3">
-          <button 
+          <button
             onClick={() => setIsHistoryOpen(!isHistoryOpen)}
             className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
           >
@@ -442,14 +476,14 @@ const App: React.FC = () => {
                   <span className="text-xs font-bold text-blue-600 px-2 py-1 bg-blue-50 rounded-lg">
                     {checkedMessageIds.size} Selected
                   </span>
-                  <button 
+                  <button
                     onClick={() => setShowBatchDeleteConfirm(true)}
                     disabled={checkedMessageIds.size === 0}
                     className="flex items-center space-x-2 px-3 py-2 bg-red-50 text-red-600 font-bold rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 text-xs"
                   >
                     Delete Selected
                   </button>
-                  <button 
+                  <button
                     onClick={() => { setIsEditMode(false); setCheckedMessageIds(new Set()); }}
                     className="flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors text-xs"
                   >
@@ -458,7 +492,7 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <button 
+                  <button
                     onClick={() => setIsEditMode(true)}
                     className="hidden sm:flex items-center space-x-2 px-3 py-2 text-gray-500 hover:text-gray-700 font-bold rounded-lg transition-colors text-xs border border-gray-100 bg-white"
                   >
@@ -467,7 +501,7 @@ const App: React.FC = () => {
                     </svg>
                     <span>Edit Chat</span>
                   </button>
-                  <button 
+                  <button
                     onClick={handleAnalyzeAll}
                     disabled={isAnalyzingAll}
                     className="hidden md:flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 text-xs"
@@ -475,8 +509,8 @@ const App: React.FC = () => {
                     {isAnalyzingAll ? <span className="w-3 h-3 border-2 border-gray-700 border-t-transparent animate-spin rounded-full"></span> : null}
                     <span>Analyze All</span>
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={handleSummarize}
                     disabled={isSummaryLoading}
                     className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 text-xs"
@@ -486,7 +520,7 @@ const App: React.FC = () => {
                   </button>
 
                   <div className="flex bg-gray-100 p-1 rounded-lg space-x-1">
-                    <button 
+                    <button
                       onClick={handleExportTXT}
                       className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-white rounded transition-all"
                       title="Export as TXT"
@@ -495,7 +529,7 @@ const App: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </button>
-                    <button 
+                    <button
                       onClick={handleExportPDF}
                       className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-white rounded transition-all"
                       title="Export for PDF/Print"
@@ -507,7 +541,7 @@ const App: React.FC = () => {
                     </button>
                   </div>
 
-                  <button 
+                  <button
                     onClick={() => setShowResetConfirm(true)}
                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                     title="Clear All History"
@@ -520,7 +554,7 @@ const App: React.FC = () => {
               )}
             </>
           )}
-          <button 
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg"
           >
@@ -534,14 +568,14 @@ const App: React.FC = () => {
 
       <main className="flex-1 flex overflow-hidden relative">
         {/* History Sidebar */}
-        <aside 
+        <aside
           className={`
             fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-gray-100 transform transition-transform duration-300 lg:relative lg:translate-x-0
             ${isHistoryOpen ? 'translate-x-0' : '-translate-x-full'}
           `}
         >
           <div className="h-full flex flex-col p-4 pt-[80px] lg:pt-4">
-            <button 
+            <button
               onClick={handleNewChat}
               className="w-full flex items-center justify-center space-x-2 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all mb-6 shadow-md shadow-blue-100"
             >
@@ -550,14 +584,14 @@ const App: React.FC = () => {
               </svg>
               <span>New Analysis</span>
             </button>
-            
+
             <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
               <h3 className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">History</h3>
               {conversations.length === 0 && (
                 <div className="p-4 text-center text-xs text-gray-400 italic">No history yet</div>
               )}
               {conversations.map(conv => (
-                <div 
+                <div
                   key={conv.id}
                   onClick={() => { setCurrentConvId(conv.id); setIsHistoryOpen(false); setIsEditMode(false); }}
                   className={`
@@ -573,7 +607,7 @@ const App: React.FC = () => {
                       {new Date(conv.updatedAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); setConvIdToDelete(conv.id); }}
                     className="p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -599,13 +633,13 @@ const App: React.FC = () => {
                 <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 mb-6">
                   <h2 className="text-2xl font-bold text-gray-800 mb-2">Ready to Guide Your Gab?</h2>
                   <p className="text-gray-500 mb-8 text-sm leading-relaxed">Paste your chat history to start your linguistic analysis journey.</p>
-                  <textarea 
+                  <textarea
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder={`[Steven]: "Hi there!"\n[Coach]: "Hello Steven, how are you?"`}
                     className="w-full h-48 p-4 text-sm bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-mono"
                   />
-                  <button 
+                  <button
                     onClick={parseConversation}
                     disabled={!inputText.trim()}
                     className="w-full mt-6 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-100"
@@ -619,16 +653,16 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
               <div className="max-w-3xl mx-auto pb-20">
                 <div className="mb-8 flex items-center justify-between">
-                  <input 
+                  <input
                     value={activeConversation.title}
                     onChange={(e) => updateActiveConversation({ title: e.target.value })}
                     className="text-xl font-bold text-gray-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-2 -ml-2"
                   />
                 </div>
                 {messages.map((msg) => (
-                  <ChatBubble 
-                    key={msg.id} 
-                    message={msg} 
+                  <ChatBubble
+                    key={msg.id}
+                    message={msg}
                     isSelected={selectedMsgId === msg.id}
                     isEditMode={isEditMode}
                     isChecked={checkedMessageIds.has(msg.id)}
@@ -641,25 +675,25 @@ const App: React.FC = () => {
           )}
         </div>
 
-        <aside 
+        <aside
           className={`
             hidden md:block fixed right-0 top-[73px] bottom-0 w-[380px] z-20 transition-transform duration-300 transform
             ${analysisState === AnalysisState.IDLE ? 'translate-x-full' : 'translate-x-0'}
           `}
         >
-          <AnalysisDrawer 
-            state={analysisState} 
-            analysis={analysis} 
-            onClose={() => { setAnalysisState(AnalysisState.IDLE); setSelectedMsgId(null); }} 
+          <AnalysisDrawer
+            state={analysisState}
+            analysis={analysis}
+            onClose={() => { setAnalysisState(AnalysisState.IDLE); setSelectedMsgId(null); }}
           />
         </aside>
 
         {analysisState !== AnalysisState.IDLE && (
           <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-white">
-             <AnalysisDrawer 
-              state={analysisState} 
-              analysis={analysis} 
-              onClose={() => { setAnalysisState(AnalysisState.IDLE); setSelectedMsgId(null); }} 
+            <AnalysisDrawer
+              state={analysisState}
+              analysis={analysis}
+              onClose={() => { setAnalysisState(AnalysisState.IDLE); setSelectedMsgId(null); }}
             />
           </div>
         )}
@@ -670,10 +704,11 @@ const App: React.FC = () => {
       )}
 
       {isSettingsOpen && (
-        <SettingsModal 
-          currentKey={settings.apiKey} 
-          onSave={(key) => { setSettings({ apiKey: key }); setIsSettingsOpen(false); }} 
-          onClose={() => setIsSettingsOpen(false)} 
+        <SettingsModal
+          currentKey={settings.apiKey}
+          currentModel={settings.model}
+          onSave={(key, model) => { setSettings({ apiKey: key, model }); setIsSettingsOpen(false); }}
+          onClose={() => setIsSettingsOpen(false)}
         />
       )}
 
@@ -709,7 +744,7 @@ const App: React.FC = () => {
           onCancel={() => setShowResetConfirm(false)}
         />
       )}
-      
+
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
