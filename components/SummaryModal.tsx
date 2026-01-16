@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { ConversationSummary } from '../types';
+import { getScoreColorClass } from '../utils/scoreUtils';
 
 interface SummaryModalProps {
   summary: ConversationSummary | null;
@@ -8,9 +9,7 @@ interface SummaryModalProps {
 }
 
 const ScorePill: React.FC<{ score: number; label: string }> = ({ score, label }) => {
-  const colorClass = score >= 8 ? 'bg-green-100 text-green-700 border-green-200'
-    : score >= 5 ? 'bg-amber-100 text-amber-700 border-amber-200'
-      : 'bg-red-100 text-red-700 border-red-200';
+  const colorClass = getScoreColorClass(score);
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${colorClass}`}>
       {label}: {score}/10

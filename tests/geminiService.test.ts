@@ -1,25 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GeminiModel, Message } from '../types';
 
-// Mock the Google GenAI module
-vi.mock('@google/genai', () => ({
-    GoogleGenAI: vi.fn().mockImplementation(() => ({
-        models: {
-            generateContent: vi.fn()
+// Create a mock for generateContent that can be controlled per test
+const mockGenerateContent = vi.fn();
+
+// Mock the Google GenAI module with a proper class
+vi.mock('@google/genai', () => {
+    return {
+        GoogleGenAI: class MockGoogleGenAI {
+            constructor() { }
+            models = {
+                generateContent: mockGenerateContent
+            };
+        },
+        Type: {
+            OBJECT: 'object',
+            STRING: 'string',
+            NUMBER: 'number',
+            BOOLEAN: 'boolean',
+            ARRAY: 'array'
         }
-    })),
-    Type: {
-        OBJECT: 'object',
-        STRING: 'string',
-        NUMBER: 'number',
-        BOOLEAN: 'boolean',
-        ARRAY: 'array'
-    }
-}));
+    };
+});
 
 // Import after mocking
-import { analyzeMessage, analyzeBatchMessages, summarizeConversation } from '../services/geminiService';
-import { GoogleGenAI } from '@google/genai';
+import { analyzeMessage, analyzeBatchMessages, summarizeConversation, buildContext, MAX_CONTEXT_MESSAGES } from '../services/geminiService';
 
 const mockApiKey = 'test-api-key';
 const mockModel = GeminiModel.FLASH;
@@ -27,6 +32,67 @@ const mockModel = GeminiModel.FLASH;
 describe('geminiService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockGenerateContent.mockReset();
+    });
+
+    describe('buildContext', () => {
+        const createMockMessage = (id: string, text: string): Message => ({
+            id,
+            sender: 'User',
+            text,
+            role: 'user',
+            timestamp: '10:00'
+        });
+
+        it('should return all messages when count is less than MAX_CONTEXT_MESSAGES', () => {
+            const messages = [
+                createMockMessage('1', 'Hello'),
+                createMockMessage('2', 'World'),
+                createMockMessage('3', 'Test')
+            ];
+
+            const result = buildContext(messages, 2);
+
+            expect(result).toBe('User: Hello\nUser: World\nUser: Test');
+        });
+
+        it('should limit context to MAX_CONTEXT_MESSAGES', () => {
+            const messages = Array.from({ length: 15 }, (_, i) =>
+                createMockMessage(String(i), `Message ${i}`)
+            );
+
+            const result = buildContext(messages, 14);
+            const lines = result.split('\n');
+
+            expect(lines).toHaveLength(MAX_CONTEXT_MESSAGES);
+        });
+
+        it('should include messages up to specified index', () => {
+            const messages = [
+                createMockMessage('1', 'First'),
+                createMockMessage('2', 'Second'),
+                createMockMessage('3', 'Third'),
+                createMockMessage('4', 'Fourth')
+            ];
+
+            const result = buildContext(messages, 1);
+
+            expect(result).toBe('User: First\nUser: Second');
+            expect(result).not.toContain('Third');
+        });
+
+        it('should handle single message', () => {
+            const messages = [createMockMessage('1', 'Only message')];
+
+            const result = buildContext(messages, 0);
+
+            expect(result).toBe('User: Only message');
+        });
+
+        it('should handle empty messages array', () => {
+            const result = buildContext([], 0);
+            expect(result).toBe('');
+        });
     });
 
     describe('analyzeMessage', () => {
@@ -41,15 +107,9 @@ describe('geminiService', () => {
                 isNatural: true
             };
 
-            const mockGenerateContent = vi.fn().mockResolvedValue({
+            mockGenerateContent.mockResolvedValue({
                 text: JSON.stringify(mockResponse)
             });
-
-            (GoogleGenAI as any).mockImplementation(() => ({
-                models: {
-                    generateContent: mockGenerateContent
-                }
-            }));
 
             const result = await analyzeMessage(mockApiKey, mockModel, 'Hello there!', 'User: Hello there!');
 
@@ -63,13 +123,7 @@ describe('geminiService', () => {
         });
 
         it('should throw error when API fails', async () => {
-            const mockGenerateContent = vi.fn().mockRejectedValue(new Error('API Error'));
-
-            (GoogleGenAI as any).mockImplementation(() => ({
-                models: {
-                    generateContent: mockGenerateContent
-                }
-            }));
+            mockGenerateContent.mockRejectedValue(new Error('API Error'));
 
             await expect(analyzeMessage(mockApiKey, mockModel, 'Test', 'Context'))
                 .rejects.toThrow('API Error');
@@ -106,15 +160,9 @@ describe('geminiService', () => {
                 }
             ];
 
-            const mockGenerateContent = vi.fn().mockResolvedValue({
+            mockGenerateContent.mockResolvedValue({
                 text: JSON.stringify(mockBatchResponse)
             });
-
-            (GoogleGenAI as any).mockImplementation(() => ({
-                models: {
-                    generateContent: mockGenerateContent
-                }
-            }));
 
             const allMessages: Message[] = [
                 { id: 'msg-1', sender: 'User', text: 'Hello', role: 'user', timestamp: '10:00' },
@@ -152,15 +200,9 @@ describe('geminiService', () => {
                 ]
             };
 
-            const mockGenerateContent = vi.fn().mockResolvedValue({
+            mockGenerateContent.mockResolvedValue({
                 text: JSON.stringify(mockResponse)
             });
-
-            (GoogleGenAI as any).mockImplementation(() => ({
-                models: {
-                    generateContent: mockGenerateContent
-                }
-            }));
 
             const result = await summarizeConversation(mockApiKey, mockModel, 'User: Hello\nAI: Hi there!');
 

@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "@google/genai": "^1.35.0",
+    "jsdom": "^13.0.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "vitest": "^4.0.17"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",

@@ -7,6 +7,7 @@ import { SummaryModal } from './components/SummaryModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { analyzeMessage, summarizeConversation, analyzeBatchMessages } from './services/geminiService';
+import { parseConversationText } from './utils/conversationParser';
 
 const STORAGE_KEY_CONVS = 'gab_guide_conversations';
 const STORAGE_KEY_SETTINGS = 'gab_guide_settings';
@@ -92,56 +93,25 @@ const App: React.FC = () => {
   };
 
   const parseConversation = () => {
-    if (!inputText.trim()) return;
+    const parsed = parseConversationText(inputText);
+    if (parsed.length === 0) return;
 
-    const lines = inputText.split('\n').filter(l => l.trim().length > 0);
-    const parsed: Message[] = [];
-    let currentSpeaker = '';
-    let currentRole: 'user' | 'assistant' = 'user';
-
-    lines.forEach((line, index) => {
-      const match = line.match(/^\[(.*?)\](?:\s*\((.*?)\))?:\s*(.*)/);
-      if (match) {
-        currentSpeaker = match[1];
-        const speakerLower = currentSpeaker.toLowerCase();
-        currentRole = (speakerLower.includes('chatgpt') || speakerLower.includes('ai')) ? 'assistant' : 'user';
-
-        let text = match[3].trim();
-        if (text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1);
-        if (text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1);
-
-        parsed.push({
-          id: `msg-${Date.now()}-${index}`,
-          sender: currentSpeaker,
-          role: currentRole,
-          text,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
-      } else if (parsed.length > 0) {
-        let text = line.trim();
-        if (text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1);
-        parsed[parsed.length - 1].text += '\n' + text;
-      }
-    });
-
-    if (parsed.length > 0) {
-      if (!currentConvId) {
-        const newId = `conv-${Date.now()}`;
-        const newConv: Conversation = {
-          id: newId,
-          title: 'Imported Chat',
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          messages: parsed,
-          summary: null
-        };
-        setConversations(prev => [newConv, ...prev]);
-        setCurrentConvId(newId);
-      } else {
-        updateActiveConversation({ messages: [...messages, ...parsed] });
-      }
-      setInputText('');
+    if (!currentConvId) {
+      const newId = `conv-${Date.now()}`;
+      const newConv: Conversation = {
+        id: newId,
+        title: 'Imported Chat',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: parsed,
+        summary: null
+      };
+      setConversations(prev => [newConv, ...prev]);
+      setCurrentConvId(newId);
+    } else {
+      updateActiveConversation({ messages: [...messages, ...parsed] });
     }
+    setInputText('');
   };
 
   const checkApiKey = () => {

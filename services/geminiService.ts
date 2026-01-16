@@ -2,9 +2,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, ConversationSummary, GeminiModel, Message } from "../types";
 
-const MAX_CONTEXT_MESSAGES = 10;
+export const MAX_CONTEXT_MESSAGES = 10;
 
-const buildContext = (messages: Message[], upToIndex: number): string => {
+export const buildContext = (messages: Message[], upToIndex: number): string => {
   const startIndex = Math.max(0, upToIndex - MAX_CONTEXT_MESSAGES + 1);
   return messages
     .slice(startIndex, upToIndex + 1)
