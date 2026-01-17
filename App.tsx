@@ -759,7 +759,12 @@ const App: React.FC = () => {
       )}
 
       {isTopicOpen && (
-        <TopicModal onClose={() => setIsTopicOpen(false)} language={defaultLanguage} />
+        <TopicModal
+          onClose={() => setIsTopicOpen(false)}
+          language={defaultLanguage}
+          apiKey={settings.apiKey}
+          model={settings.model}
+        />
       )}
 
       {convIdToDelete && (

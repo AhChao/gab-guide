@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, ConversationSummary, GeminiModel, Message } from "../types/index";
+import { AnalysisResult, CheatSheetContent, ConversationSummary, GeminiModel, Message } from "../types/index";
+import { TopicLevel } from "../data/smallTalkTopics";
 
 export const MAX_CONTEXT_MESSAGES = 10;
 
@@ -174,4 +175,56 @@ export const summarizeConversation = async (apiKey: string, model: GeminiModel, 
   const parsed = JSON.parse(response.text);
   const { title, ...summary } = parsed;
   return { summary, title };
+};
+
+export const generateCheatSheet = async (
+  apiKey: string,
+  model: GeminiModel,
+  topic: string,
+  level: TopicLevel,
+  language: string,
+  userContext: string
+): Promise<CheatSheetContent> => {
+  const ai = new GoogleGenAI({ apiKey });
+
+  let levelDesc = '';
+  if (level === 'A') {
+    levelDesc = 'Beginner level - use simple, everyday vocabulary only';
+  } else if (level === 'B') {
+    levelDesc = 'Intermediate level - can include common expressions and slightly more varied vocabulary';
+  } else {
+    levelDesc = 'Advanced level - can include a wider range of natural expressions, but still focus on everyday conversation';
+  }
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: `Generate a small talk cheat sheet for the topic: "${topic}"
+
+User's preferred direction: ${userContext || 'general conversation'}
+Language: ${language}
+${levelDesc}
+
+Provide helpful vocabulary and sentences the learner can actually use in this conversation.`,
+    config: {
+      systemInstruction: `You are a helpful language coach preparing a learner for a small talk practice session.
+      Generate practical vocabulary and sentences they can use.
+      
+      Return JSON with:
+      - vocabulary: An array of 10-15 useful words or short phrases (2-4 words max each). These should be relevant to the topic and the user's preferred direction. Match the difficulty to the level.
+      - sentences: An array of 5-10 ready-to-use sentences. Prefer statements over questions (about 4:1 ratio). These should feel natural and conversational, not textbook-like.
+      
+      Make the content practical and immediately usable in real conversation.`,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          vocabulary: { type: Type.ARRAY, items: { type: Type.STRING } },
+          sentences: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["vocabulary", "sentences"]
+      },
+    },
+  });
+
+  return JSON.parse(response.text);
 };

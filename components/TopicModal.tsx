@@ -1,10 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getRandomTopic, getLevelLabel, TopicLevel } from '../data/smallTalkTopics';
+import { CheatSheetContent, GeminiModel } from '../types/index';
+import { generateCheatSheet } from '../services/geminiService';
+import { CheatSheetModal } from './CheatSheetModal';
 
 interface TopicModalProps {
     onClose: () => void;
     language?: string;
+    apiKey?: string;
+    model?: GeminiModel;
 }
 
 const LEVELS: TopicLevel[] = ['A', 'B', 'C'];
@@ -59,7 +64,7 @@ const STAR_SIGNS = [
     { id: 'Pisces', label: 'Pisces ♓' },
 ];
 
-export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language }) => {
+export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language, apiKey, model }) => {
     const [currentTopic, setCurrentTopic] = useState<string | null>(null);
     const [currentLevel, setCurrentLevel] = useState<TopicLevel | null>(null);
 
@@ -74,6 +79,56 @@ export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language }) => 
     const [mbtiType, setMbtiType] = useState('ENFP');
     const [useStarSign, setUseStarSign] = useState(false);
     const [starSign, setStarSign] = useState('Leo');
+
+    // Cheat sheet states
+    const [showContextInput, setShowContextInput] = useState(false);
+    const [contextInput, setContextInput] = useState('');
+    const [lastContext, setLastContext] = useState<string | null>(null);
+    const [cheatSheetData, setCheatSheetData] = useState<CheatSheetContent | null>(null);
+    const [showCheatSheet, setShowCheatSheet] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [cheatSheetError, setCheatSheetError] = useState<string | null>(null);
+
+    // Clear cheat sheet cache when topic changes
+    useEffect(() => {
+        setCheatSheetData(null);
+        setLastContext(null);
+        setContextInput('');
+        setCheatSheetError(null);
+    }, [currentTopic]);
+
+    const handleCheatSheetClick = () => {
+        setShowContextInput(true);
+    };
+
+    const handleGenerateCheatSheet = async (useLastCtx: boolean = false) => {
+        if (!apiKey || !model || !currentTopic || !currentLevel) return;
+
+        const ctx = useLastCtx ? (lastContext || '') : contextInput;
+
+        setShowContextInput(false);
+        setIsGenerating(true);
+        setCheatSheetError(null);
+        setShowCheatSheet(true);
+
+        try {
+            const result = await generateCheatSheet(
+                apiKey,
+                model,
+                currentTopic,
+                currentLevel,
+                selectedLanguage,
+                ctx
+            );
+            setCheatSheetData(result);
+            setLastContext(ctx);
+        } catch (err: any) {
+            setCheatSheetError(err?.message || 'Failed to generate cheat sheet');
+            setShowCheatSheet(false);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const handleLevelClick = (level: TopicLevel) => {
         setCurrentLevel(level);
@@ -299,20 +354,91 @@ When I say "let's start", ask me this question in a casual, friendly way in ${se
                             </div>
 
                             {/* ChatGPT Button */}
-                            <a
-                                href={`https://chatgpt.com/?prompt=${encodeURIComponent(buildPrompt())}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md active:scale-95"
-                            >
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
-                                </svg>
-                                Chat with ChatGPT Now!
-                            </a>
+                            <div className="flex gap-2">
+                                <a
+                                    href={`https://chatgpt.com/?prompt=${encodeURIComponent(buildPrompt())}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md active:scale-95"
+                                >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
+                                    </svg>
+                                    Chat with ChatGPT
+                                </a>
+                                {apiKey && (
+                                    <button
+                                        onClick={handleCheatSheetClick}
+                                        className="px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-md active:scale-95"
+                                        title="Get vocabulary and sentences to help you"
+                                    >
+                                        📝
+                                    </button>
+                                )}
+                            </div>
                             <p className="text-[10px] text-gray-400 text-center">
                                 💡 Send the message first, click Voice Mode, then say "let's start" to begin!
                             </p>
+                        </div>
+                    )}
+
+                    {/* Context Input Dialog */}
+                    {showContextInput && (
+                        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 animate-in zoom-in-95">
+                                <h3 className="text-lg font-bold text-gray-800">📝 Cheat Sheet Preferences</h3>
+                                <p className="text-sm text-gray-500">What direction would you like to take this conversation?</p>
+                                <input
+                                    type="text"
+                                    value={contextInput}
+                                    onChange={(e) => setContextInput(e.target.value)}
+                                    placeholder="e.g., coffee, travel, work..."
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+                                    autoFocus
+                                />
+                                <div className="flex gap-2">
+                                    {lastContext && cheatSheetData && (
+                                        <button
+                                            onClick={() => {
+                                                setShowContextInput(false);
+                                                setShowCheatSheet(true);
+                                            }}
+                                            className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-all text-sm"
+                                        >
+                                            Use last: "{lastContext || 'general'}"
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => handleGenerateCheatSheet(false)}
+                                        className="flex-1 py-2.5 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all"
+                                    >
+                                        Generate
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => setShowContextInput(false)}
+                                    className="w-full py-2 text-gray-400 hover:text-gray-600 text-sm"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Cheat Sheet Modal */}
+                    {showCheatSheet && (cheatSheetData || isGenerating) && (
+                        <CheatSheetModal
+                            content={cheatSheetData || { vocabulary: [], sentences: [] }}
+                            topic={currentTopic || ''}
+                            userContext={lastContext || contextInput}
+                            isLoading={isGenerating}
+                            onClose={() => setShowCheatSheet(false)}
+                        />
+                    )}
+
+                    {cheatSheetError && (
+                        <div className="p-3 bg-red-50 text-red-700 rounded-xl text-sm">
+                            {cheatSheetError}
                         </div>
                     )}
 

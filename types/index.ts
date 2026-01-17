@@ -74,3 +74,8 @@ export enum AnalysisState {
     SUCCESS = 'SUCCESS',
     ERROR = 'ERROR'
 }
+
+export interface CheatSheetContent {
+    vocabulary: string[];
+    sentences: string[];
+}
