@@ -10,6 +10,7 @@ import { TopicModal } from './components/TopicModal';
 import { analyzeMessage, summarizeConversation, analyzeBatchMessages } from './services/geminiService';
 import { parseConversationText } from './utils/conversationParser';
 import { getLanguageCode, getLanguageColor } from './utils/languageUtils';
+import { getScoreBgClass } from './utils/scoreUtils';
 
 const STORAGE_KEY_CONVS = 'gab_guide_conversations';
 const STORAGE_KEY_SETTINGS = 'gab_guide_settings';
@@ -642,23 +643,17 @@ const App: React.FC = () => {
                       <div className="flex gap-0.5 mt-1">
                         {/* Grammar */}
                         <div
-                          className={`w-3 h-1.5 rounded-sm ${conv.summary.grammarScore <= 3 ? 'bg-red-400' :
-                            conv.summary.grammarScore <= 6 ? 'bg-amber-400' : 'bg-green-400'
-                            }`}
+                          className={`w-3 h-1.5 rounded-sm ${getScoreBgClass(conv.summary.grammarScore)}`}
                           title={`Grammar: ${conv.summary.grammarScore}/10`}
                         />
                         {/* Clarity */}
                         <div
-                          className={`w-3 h-1.5 rounded-sm ${conv.summary.clarityScore <= 3 ? 'bg-red-400' :
-                            conv.summary.clarityScore <= 6 ? 'bg-amber-400' : 'bg-green-400'
-                            }`}
+                          className={`w-3 h-1.5 rounded-sm ${getScoreBgClass(conv.summary.clarityScore)}`}
                           title={`Clarity: ${conv.summary.clarityScore}/10`}
                         />
                         {/* Flow */}
                         <div
-                          className={`w-3 h-1.5 rounded-sm ${conv.summary.flowScore <= 3 ? 'bg-red-400' :
-                            conv.summary.flowScore <= 6 ? 'bg-amber-400' : 'bg-green-400'
-                            }`}
+                          className={`w-3 h-1.5 rounded-sm ${getScoreBgClass(conv.summary.flowScore)}`}
                           title={`Flow: ${conv.summary.flowScore}/10`}
                         />
                       </div>
