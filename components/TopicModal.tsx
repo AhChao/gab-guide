@@ -104,11 +104,39 @@ export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language }) => 
             personalityPrompt = ` Roleplay with a ${traits.join(' and ')} vibe.`;
         }
 
-        return `Let's practice ${selectedLanguage || 'English'} small talk. Topic: "${currentTopic}" 
+        // Level-specific language guidance - focus on natural conversation, not difficulty
+        let levelGuidance = '';
+        if (currentLevel === 'A') {
+            levelGuidance = `
+Language Level: Beginner-friendly
+- Keep sentences simple and clear
+- Use everyday vocabulary only
+- Speak at a comfortable pace
+- Ask straightforward questions
+- Be encouraging and patient`;
+        } else if (currentLevel === 'B') {
+            levelGuidance = `
+Language Level: Intermediate (can use A-B range)
+- Use natural, everyday expressions
+- You may ask for opinions or descriptions
+- Keep it conversational and friendly
+- Introduce common phrases natives actually use
+- Still prioritize clarity over complexity`;
+        } else if (currentLevel === 'C') {
+            levelGuidance = `
+Language Level: Advanced (can use A-C range)
+- Use natural, authentic daily conversation style
+- Feel free to use idioms or expressions if they fit naturally
+- Engage in genuine discussion, not academic language
+- The goal is fluent, real-world conversation
+- Don't artificially make things difficult - keep it natural`;
+        }
 
+        return `Let's practice ${selectedLanguage || 'English'} small talk. Topic: "${currentTopic}"
+${levelGuidance}
 Style: ${stylePrompt}${personalityPrompt}
 
-When I say "let's start", ask me this question in a casual, friendly way in ${selectedLanguage || 'English'}. Keep the conversation natural and interactive.`;
+When I say "let's start", ask me this question in a casual, friendly way in ${selectedLanguage || 'English'}. Keep the conversation natural and interactive. Adjust your language complexity to match the difficulty level above.`;
     };
 
     return (
