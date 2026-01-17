@@ -203,6 +203,14 @@ const App: React.FC = () => {
     });
   };
 
+  const handleToggleExclude = (id: string) => {
+    updateActiveConversation({
+      messages: messages.map(m =>
+        m.id === id ? { ...m, excluded: !m.excluded } : m
+      )
+    });
+  };
+
   const handleDeleteSelectedMessages = () => {
     if (checkedMessageIds.size === 0) return;
     const remainingMessages = messages.filter(m => !checkedMessageIds.has(m.id));
@@ -219,7 +227,7 @@ const App: React.FC = () => {
     try {
       const unanalyzedUserMessages = messages
         .map((msg, index) => ({ ...msg, index }))
-        .filter(msg => msg.role === 'user' && !msg.analysis);
+        .filter(msg => msg.role === 'user' && !msg.analysis && !msg.excluded);
 
       if (unanalyzedUserMessages.length === 0) {
         setIsAnalyzingAll(false);
@@ -263,7 +271,9 @@ const App: React.FC = () => {
 
     setIsSummaryLoading(true);
     try {
-      const conversationText = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
+      // Filter excluded messages
+      const includedMessages = messages.filter(m => !m.excluded);
+      const conversationText = includedMessages.map(m => `${m.sender}: ${m.text}`).join('\n');
       const { summary: resSummary, title: resTitle } = await summarizeConversation(settings.apiKey, settings.model, conversationText, activeConversation?.language || 'English');
       updateActiveConversation({ summary: resSummary, title: resTitle });
       setShowSummary(true);
@@ -471,7 +481,7 @@ const App: React.FC = () => {
           </div>
           <div className="hidden sm:block">
             <h1 className="text-xl font-bold text-gray-900 leading-tight">Gab Guide</h1>
-            <p className="text-xs text-gray-500 font-medium">Your Local English Coach</p>
+            <p className="text-xs text-gray-500 font-medium">Small Talk, Big Changes</p>
           </div>
         </div>
 
@@ -769,6 +779,7 @@ const App: React.FC = () => {
                     isEditMode={isEditMode}
                     isChecked={checkedMessageIds.has(msg.id)}
                     onToggleCheck={handleToggleMessageCheck}
+                    onToggleExclude={handleToggleExclude}
                     onClick={handleMessageClick}
                     colorByScoring={settings.colorByScoring}
                   />

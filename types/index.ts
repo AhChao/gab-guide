@@ -7,6 +7,7 @@ export interface Message {
     timestamp: string;
     analysis?: AnalysisResult;
     viewed?: boolean;
+    excluded?: boolean;
 }
 
 export interface AnalysisResult {
