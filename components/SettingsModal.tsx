@@ -1,12 +1,21 @@
 
 import React, { useState } from 'react';
 import { GeminiModel, ColorByScoring } from '../types/index';
+import { ConfirmModal } from './ConfirmModal';
 
 interface SettingsModalProps {
   currentKey: string;
   currentModel: GeminiModel;
   currentColorByScoring: ColorByScoring;
-  onSave: (key: string, model: GeminiModel, colorByScoring: ColorByScoring) => void;
+  currentCustomLanguages: string[];
+  currentShowConversationScores: boolean;
+  onSave: (settings: {
+    key: string;
+    model: GeminiModel;
+    colorByScoring: ColorByScoring;
+    customLanguages: string[];
+    showConversationScores: boolean;
+  }) => void;
   onClose: () => void;
 }
 
@@ -30,12 +39,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentKey,
   currentModel,
   currentColorByScoring,
+  currentCustomLanguages,
+  currentShowConversationScores,
   onSave,
   onClose
 }) => {
   const [key, setKey] = useState(currentKey);
   const [model, setModel] = useState<GeminiModel>(currentModel);
   const [colorByScoring, setColorByScoring] = useState<ColorByScoring>(currentColorByScoring);
+  const [customLanguages, setCustomLanguages] = useState<string[]>(currentCustomLanguages);
+  const [showConversationScores, setShowConversationScores] = useState(currentShowConversationScores);
+
+  // Remove confirmation
+  const [languageToRemove, setLanguageToRemove] = useState<string | null>(null);
+
+  const handleRemoveLanguage = (lang: string) => {
+    setCustomLanguages(prev => prev.filter(l => l !== lang));
+    setLanguageToRemove(null);
+  };
+
+  const handleSave = () => {
+    onSave({ key, model, colorByScoring, customLanguages, showConversationScores });
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
@@ -49,6 +74,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
         <div className="p-6 space-y-6 overflow-y-auto">
+          {/* API Key */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-gray-700 block">Google AI Studio API Key</label>
             <input
@@ -63,6 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
 
+          {/* AI Model */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-gray-700 block">AI Model</label>
             <select
@@ -76,6 +103,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </select>
           </div>
 
+          {/* Color By Scoring */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-gray-700 block">Color By Scoring</label>
             <select
@@ -92,6 +120,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
 
+          {/* Show Conversation Scores */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showConversationScores}
+                onChange={(e) => setShowConversationScores(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-bold text-gray-700">Show Conversation Scores</span>
+                <p className="text-[10px] text-gray-500">Display Grammar, Clarity, Flow scores in history</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Custom Languages */}
+          <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <label className="text-sm font-bold text-gray-700 block">Custom Languages</label>
+            {customLanguages.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No custom languages yet. Add from language dropdowns.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {customLanguages.map(lang => (
+                  <span
+                    key={lang}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm"
+                  >
+                    {lang}
+                    <button
+                      onClick={() => setLanguageToRemove(lang)}
+                      className="text-gray-400 hover:text-red-500 ml-1"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-gray-500">
+              Languages added here appear directly in dropdown menus.
+            </p>
+          </div>
+
+          {/* Privacy Notice */}
           <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 space-y-2">
             <div className="flex items-center text-amber-800 font-bold text-xs uppercase tracking-wider">
               <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -104,15 +177,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
         </div>
+
         <div className="p-6 bg-gray-50 flex justify-end flex-shrink-0">
           <button
-            onClick={() => onSave(key, model, colorByScoring)}
+            onClick={handleSave}
             className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md active:scale-95"
           >
             Save Changes
           </button>
         </div>
       </div>
+
+      {/* Remove Language Confirmation */}
+      {languageToRemove && (
+        <ConfirmModal
+          title="Remove Language"
+          message={`Remove "${languageToRemove}" from your custom languages?`}
+          confirmText="Remove"
+          onConfirm={() => handleRemoveLanguage(languageToRemove)}
+          onCancel={() => setLanguageToRemove(null)}
+        />
+      )}
     </div>
   );
 };

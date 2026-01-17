@@ -18,7 +18,9 @@ const STORAGE_KEY_LANGUAGE = 'gab_guide_default_language';
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
   model: GeminiModel.GEMINI_3_FLASH_PREVIEW,
-  colorByScoring: ColorByScoring.AFTER_READ
+  colorByScoring: ColorByScoring.AFTER_READ,
+  customLanguages: [],
+  showConversationScores: false
 };
 
 const App: React.FC = () => {
@@ -61,6 +63,7 @@ const App: React.FC = () => {
   const [defaultLanguage, setDefaultLanguage] = useState(() => {
     return localStorage.getItem(STORAGE_KEY_LANGUAGE) || 'English';
   });
+  const [saveToCustom, setSaveToCustom] = useState(false);
 
   // Derived state
   const activeConversation = conversations.find(c => c.id === currentConvId);
@@ -127,6 +130,20 @@ const App: React.FC = () => {
     } else {
       updateActiveConversation({ messages: [...messages, ...parsed] });
     }
+
+    // Save to custom languages if checkbox checked
+    if (saveToCustom && defaultLanguage.trim()) {
+      const trimmed = defaultLanguage.trim();
+      const allExisting = ['English', 'Japanese', 'Spanish', ...settings.customLanguages];
+      if (!allExisting.includes(trimmed)) {
+        setSettings(prev => ({
+          ...prev,
+          customLanguages: [...prev.customLanguages, trimmed]
+        }));
+      }
+      setSaveToCustom(false);
+    }
+
     setInputText('');
   };
 
@@ -620,6 +637,32 @@ const App: React.FC = () => {
                     <p className="text-[10px] text-gray-400">
                       {new Date(conv.updatedAt).toLocaleDateString()}
                     </p>
+                    {/* Score bars */}
+                    {settings.showConversationScores && conv.summary && (
+                      <div className="flex gap-0.5 mt-1">
+                        {/* Grammar */}
+                        <div
+                          className={`w-3 h-1.5 rounded-sm ${conv.summary.grammarScore <= 3 ? 'bg-red-400' :
+                            conv.summary.grammarScore <= 6 ? 'bg-amber-400' : 'bg-green-400'
+                            }`}
+                          title={`Grammar: ${conv.summary.grammarScore}/10`}
+                        />
+                        {/* Clarity */}
+                        <div
+                          className={`w-3 h-1.5 rounded-sm ${conv.summary.clarityScore <= 3 ? 'bg-red-400' :
+                            conv.summary.clarityScore <= 6 ? 'bg-amber-400' : 'bg-green-400'
+                            }`}
+                          title={`Clarity: ${conv.summary.clarityScore}/10`}
+                        />
+                        {/* Flow */}
+                        <div
+                          className={`w-3 h-1.5 rounded-sm ${conv.summary.flowScore <= 3 ? 'bg-red-400' :
+                            conv.summary.flowScore <= 6 ? 'bg-amber-400' : 'bg-green-400'
+                            }`}
+                          title={`Flow: ${conv.summary.flowScore}/10`}
+                        />
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setConvIdToDelete(conv.id); }}
@@ -657,12 +700,18 @@ const App: React.FC = () => {
                   <div className="mt-4 space-y-2">
                     <label className="text-xs font-bold text-gray-600 block">Analysis Language</label>
                     <select
-                      value={['English', 'Japanese', 'Spanish'].includes(defaultLanguage) ? defaultLanguage : 'Other'}
+                      value={
+                        ['English', 'Japanese', 'Spanish', ...settings.customLanguages].includes(defaultLanguage)
+                          ? defaultLanguage
+                          : 'Other'
+                      }
                       onChange={(e) => {
                         if (e.target.value !== 'Other') {
                           setDefaultLanguage(e.target.value);
+                          setSaveToCustom(false);
                         } else {
                           setDefaultLanguage('');
+                          setSaveToCustom(false);
                         }
                       }}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
@@ -670,16 +719,30 @@ const App: React.FC = () => {
                       <option value="English">English</option>
                       <option value="Japanese">Japanese</option>
                       <option value="Spanish">Spanish</option>
+                      {settings.customLanguages.map(lang => (
+                        <option key={lang} value={lang}>{lang}</option>
+                      ))}
                       <option value="Other">Other...</option>
                     </select>
-                    {!['English', 'Japanese', 'Spanish'].includes(defaultLanguage) && (
-                      <input
-                        type="text"
-                        value={defaultLanguage}
-                        onChange={(e) => setDefaultLanguage(e.target.value)}
-                        placeholder="Enter language name (e.g., German, French)"
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                      />
+                    {!['English', 'Japanese', 'Spanish', ...settings.customLanguages].includes(defaultLanguage) && (
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={defaultLanguage}
+                          onChange={(e) => setDefaultLanguage(e.target.value)}
+                          placeholder="Enter language name (e.g., German, French)"
+                          className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                        />
+                        <label className="flex items-center gap-1 text-[10px] text-gray-500 whitespace-nowrap cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={saveToCustom}
+                            onChange={(e) => setSaveToCustom(e.target.checked)}
+                            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600"
+                          />
+                          ＋Save
+                        </label>
+                      </div>
                     )}
                   </div>
 
@@ -753,7 +816,18 @@ const App: React.FC = () => {
           currentKey={settings.apiKey}
           currentModel={settings.model}
           currentColorByScoring={settings.colorByScoring}
-          onSave={(key, model, colorByScoring) => { setSettings({ apiKey: key, model, colorByScoring }); setIsSettingsOpen(false); }}
+          currentCustomLanguages={settings.customLanguages}
+          currentShowConversationScores={settings.showConversationScores}
+          onSave={(s) => {
+            setSettings({
+              apiKey: s.key,
+              model: s.model,
+              colorByScoring: s.colorByScoring,
+              customLanguages: s.customLanguages,
+              showConversationScores: s.showConversationScores
+            });
+            setIsSettingsOpen(false);
+          }}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
@@ -764,6 +838,16 @@ const App: React.FC = () => {
           language={defaultLanguage}
           apiKey={settings.apiKey}
           model={settings.model}
+          customLanguages={settings.customLanguages}
+          onAddCustomLanguage={(lang) => {
+            const allExisting = ['English', 'Japanese', 'Spanish', ...settings.customLanguages];
+            if (!allExisting.includes(lang)) {
+              setSettings(prev => ({
+                ...prev,
+                customLanguages: [...prev.customLanguages, lang]
+              }));
+            }
+          }}
         />
       )}
 

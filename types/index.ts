@@ -66,6 +66,8 @@ export interface AppSettings {
     apiKey: string;
     model: GeminiModel;
     colorByScoring: ColorByScoring;
+    customLanguages: string[];
+    showConversationScores: boolean;
 }
 
 export enum AnalysisState {

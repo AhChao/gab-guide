@@ -10,6 +10,8 @@ interface TopicModalProps {
     language?: string;
     apiKey?: string;
     model?: GeminiModel;
+    customLanguages?: string[];
+    onAddCustomLanguage?: (lang: string) => void;
 }
 
 const LEVELS: TopicLevel[] = ['A', 'B', 'C'];
@@ -64,7 +66,7 @@ const STAR_SIGNS = [
     { id: 'Pisces', label: 'Pisces ♓' },
 ];
 
-export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language, apiKey, model }) => {
+export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language, apiKey, model, customLanguages, onAddCustomLanguage }) => {
     const [currentTopic, setCurrentTopic] = useState<string | null>(null);
     const [currentLevel, setCurrentLevel] = useState<TopicLevel | null>(null);
 
@@ -73,6 +75,7 @@ export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language, apiKe
 
     // Language selection - initialized from prop
     const [selectedLanguage, setSelectedLanguage] = useState(language || 'English');
+    const [saveToCustom, setSaveToCustom] = useState(false);
 
     // Fun experimental options
     const [useMbti, setUseMbti] = useState(false);
@@ -269,12 +272,14 @@ When I say "let's start", ask me this question in a casual, friendly way in ${se
                             <div className="space-y-2">
                                 <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Practice Language</p>
                                 <select
-                                    value={['English', 'Japanese', 'Spanish'].includes(selectedLanguage) ? selectedLanguage : 'Other'}
+                                    value={['English', 'Japanese', 'Spanish', ...(customLanguages || [])].includes(selectedLanguage) ? selectedLanguage : 'Other'}
                                     onChange={(e) => {
                                         if (e.target.value !== 'Other') {
                                             setSelectedLanguage(e.target.value);
+                                            setSaveToCustom(false);
                                         } else {
                                             setSelectedLanguage('');
+                                            setSaveToCustom(false);
                                         }
                                     }}
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
@@ -282,16 +287,32 @@ When I say "let's start", ask me this question in a casual, friendly way in ${se
                                     <option value="English">English</option>
                                     <option value="Japanese">Japanese</option>
                                     <option value="Spanish">Spanish</option>
+                                    {(customLanguages || []).map(lang => (
+                                        <option key={lang} value={lang}>{lang}</option>
+                                    ))}
                                     <option value="Other">Other...</option>
                                 </select>
-                                {!['English', 'Japanese', 'Spanish'].includes(selectedLanguage) && (
-                                    <input
-                                        type="text"
-                                        value={selectedLanguage}
-                                        onChange={(e) => setSelectedLanguage(e.target.value)}
-                                        placeholder="Enter language name (e.g., German, French)"
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                                    />
+                                {!['English', 'Japanese', 'Spanish', ...(customLanguages || [])].includes(selectedLanguage) && (
+                                    <div className="flex gap-2 items-center">
+                                        <input
+                                            type="text"
+                                            value={selectedLanguage}
+                                            onChange={(e) => setSelectedLanguage(e.target.value)}
+                                            placeholder="Enter language name (e.g., German, French)"
+                                            className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                                        />
+                                        {onAddCustomLanguage && (
+                                            <label className="flex items-center gap-1 text-[10px] text-gray-500 whitespace-nowrap cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={saveToCustom}
+                                                    onChange={(e) => setSaveToCustom(e.target.checked)}
+                                                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600"
+                                                />
+                                                ＋Save
+                                            </label>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 
@@ -359,6 +380,13 @@ When I say "let's start", ask me this question in a casual, friendly way in ${se
                                     href={`https://chatgpt.com/?prompt=${encodeURIComponent(buildPrompt())}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    onClick={() => {
+                                        // Save custom language if checkbox is checked
+                                        if (saveToCustom && selectedLanguage.trim() && onAddCustomLanguage) {
+                                            onAddCustomLanguage(selectedLanguage.trim());
+                                            setSaveToCustom(false);
+                                        }
+                                    }}
                                     className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md active:scale-95"
                                 >
                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
