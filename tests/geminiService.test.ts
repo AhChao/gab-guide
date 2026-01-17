@@ -27,7 +27,7 @@ vi.mock('@google/genai', () => {
 import { analyzeMessage, analyzeBatchMessages, summarizeConversation, buildContext, MAX_CONTEXT_MESSAGES } from '../services/geminiService';
 
 const mockApiKey = 'test-api-key';
-const mockModel = GeminiModel.FLASH;
+const mockModel = GeminiModel.GEMINI_2_0_FLASH;
 
 describe('geminiService', () => {
     beforeEach(() => {
@@ -118,6 +118,58 @@ describe('geminiService', () => {
                 expect.objectContaining({
                     model: mockModel,
                     contents: expect.stringContaining('Hello there!')
+                })
+            );
+        });
+
+        it('should use default English language when not specified', async () => {
+            const mockResponse = {
+                grammarErrors: 'None.',
+                grammarScore: 10,
+                naturalnessRating: 'Perfect.',
+                naturalnessScore: 10,
+                improvement: 'None needed.',
+                extensions: 'Continue.',
+                isNatural: true
+            };
+
+            mockGenerateContent.mockResolvedValue({
+                text: JSON.stringify(mockResponse)
+            });
+
+            await analyzeMessage(mockApiKey, mockModel, 'Test', 'Context');
+
+            expect(mockGenerateContent).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    config: expect.objectContaining({
+                        systemInstruction: expect.stringContaining('English')
+                    })
+                })
+            );
+        });
+
+        it('should use specified language in analysis prompt', async () => {
+            const mockResponse = {
+                grammarErrors: 'None.',
+                grammarScore: 10,
+                naturalnessRating: 'Perfect.',
+                naturalnessScore: 10,
+                improvement: 'None needed.',
+                extensions: 'Continue.',
+                isNatural: true
+            };
+
+            mockGenerateContent.mockResolvedValue({
+                text: JSON.stringify(mockResponse)
+            });
+
+            await analyzeMessage(mockApiKey, mockModel, 'こんにちは', 'User: こんにちは', 'Japanese');
+
+            expect(mockGenerateContent).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    config: expect.objectContaining({
+                        systemInstruction: expect.stringContaining('Japanese')
+                    })
                 })
             );
         });

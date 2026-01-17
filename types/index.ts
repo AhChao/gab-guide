@@ -43,6 +43,7 @@ export interface Conversation {
     updatedAt: number;
     messages: Message[];
     summary: ConversationSummary | null;
+    language?: string; // Optional for backwards compatibility, defaults to 'English'
 }
 
 export enum GeminiModel {

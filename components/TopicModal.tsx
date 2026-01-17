@@ -4,6 +4,7 @@ import { getRandomTopic, getLevelLabel, TopicLevel } from '../data/smallTalkTopi
 
 interface TopicModalProps {
     onClose: () => void;
+    language?: string;
 }
 
 const LEVELS: TopicLevel[] = ['A', 'B', 'C'];
@@ -58,12 +59,15 @@ const STAR_SIGNS = [
     { id: 'Pisces', label: 'Pisces ♓' },
 ];
 
-export const TopicModal: React.FC<TopicModalProps> = ({ onClose }) => {
+export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language }) => {
     const [currentTopic, setCurrentTopic] = useState<string | null>(null);
     const [currentLevel, setCurrentLevel] = useState<TopicLevel | null>(null);
 
     // Conversation style
     const [conversationStyle, setConversationStyle] = useState('curious');
+
+    // Language selection - initialized from prop
+    const [selectedLanguage, setSelectedLanguage] = useState(language || 'English');
 
     // Fun experimental options
     const [useMbti, setUseMbti] = useState(false);
@@ -100,11 +104,11 @@ export const TopicModal: React.FC<TopicModalProps> = ({ onClose }) => {
             personalityPrompt = ` Roleplay with a ${traits.join(' and ')} vibe.`;
         }
 
-        return `Let's practice English small talk. Topic: "${currentTopic}" 
+        return `Let's practice ${selectedLanguage || 'English'} small talk. Topic: "${currentTopic}" 
 
 Style: ${stylePrompt}${personalityPrompt}
 
-When I say "let's start", ask me this question in a casual, friendly way. Keep the conversation natural and interactive.`;
+When I say "let's start", ask me this question in a casual, friendly way in ${selectedLanguage || 'English'}. Keep the conversation natural and interactive.`;
     };
 
     return (
@@ -176,6 +180,36 @@ When I say "let's start", ask me this question in a casual, friendly way. Keep t
                                         <option key={style.value} value={style.value}>{style.label}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* Practice Language */}
+                            <div className="space-y-2">
+                                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Practice Language</p>
+                                <select
+                                    value={['English', 'Japanese', 'Spanish'].includes(selectedLanguage) ? selectedLanguage : 'Other'}
+                                    onChange={(e) => {
+                                        if (e.target.value !== 'Other') {
+                                            setSelectedLanguage(e.target.value);
+                                        } else {
+                                            setSelectedLanguage('');
+                                        }
+                                    }}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                                >
+                                    <option value="English">English</option>
+                                    <option value="Japanese">Japanese</option>
+                                    <option value="Spanish">Spanish</option>
+                                    <option value="Other">Other...</option>
+                                </select>
+                                {!['English', 'Japanese', 'Spanish'].includes(selectedLanguage) && (
+                                    <input
+                                        type="text"
+                                        value={selectedLanguage}
+                                        onChange={(e) => setSelectedLanguage(e.target.value)}
+                                        placeholder="Enter language name (e.g., German, French)"
+                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                                    />
+                                )}
                             </div>
 
                             {/* Fun Experimental Options */}

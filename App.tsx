@@ -9,9 +9,11 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { TopicModal } from './components/TopicModal';
 import { analyzeMessage, summarizeConversation, analyzeBatchMessages } from './services/geminiService';
 import { parseConversationText } from './utils/conversationParser';
+import { getLanguageCode, getLanguageColor } from './utils/languageUtils';
 
 const STORAGE_KEY_CONVS = 'gab_guide_conversations';
 const STORAGE_KEY_SETTINGS = 'gab_guide_settings';
+const STORAGE_KEY_LANGUAGE = 'gab_guide_default_language';
 
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
@@ -55,6 +57,11 @@ const App: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Language state
+  const [defaultLanguage, setDefaultLanguage] = useState(() => {
+    return localStorage.getItem(STORAGE_KEY_LANGUAGE) || 'English';
+  });
+
   // Derived state
   const activeConversation = conversations.find(c => c.id === currentConvId);
   const messages = activeConversation?.messages || [];
@@ -68,6 +75,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_LANGUAGE, defaultLanguage);
+  }, [defaultLanguage]);
 
   // Helper to update active conversation
   const updateActiveConversation = useCallback((updates: Partial<Conversation>) => {
@@ -108,7 +119,8 @@ const App: React.FC = () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: parsed,
-        summary: null
+        summary: null,
+        language: defaultLanguage
       };
       setConversations(prev => [newConv, ...prev]);
       setCurrentConvId(newId);
@@ -149,7 +161,7 @@ const App: React.FC = () => {
         .map(m => `${m.sender}: ${m.text}`)
         .join('\n');
 
-      const result = await analyzeMessage(settings.apiKey, settings.model, msg.text, context);
+      const result = await analyzeMessage(settings.apiKey, settings.model, msg.text, context, activeConversation?.language || 'English');
 
       updateActiveConversation({
         messages: messages.map(m => m.id === msg.id ? { ...m, analysis: result, viewed: true } : m)
@@ -200,7 +212,8 @@ const App: React.FC = () => {
         settings.apiKey,
         settings.model,
         messages,
-        unanalyzedUserMessages.map(m => ({ id: m.id, text: m.text, index: m.index }))
+        unanalyzedUserMessages.map(m => ({ id: m.id, text: m.text, index: m.index })),
+        activeConversation?.language || 'English'
       );
 
       const analysisMap = new Map(batchResults.map(r => [r.messageId, r.analysis]));
@@ -233,7 +246,7 @@ const App: React.FC = () => {
     setIsSummaryLoading(true);
     try {
       const conversationText = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
-      const { summary: resSummary, title: resTitle } = await summarizeConversation(settings.apiKey, settings.model, conversationText);
+      const { summary: resSummary, title: resTitle } = await summarizeConversation(settings.apiKey, settings.model, conversationText, activeConversation?.language || 'English');
       updateActiveConversation({ summary: resSummary, title: resTitle });
       setShowSummary(true);
       return resSummary;
@@ -587,9 +600,23 @@ const App: React.FC = () => {
                   `}
                 >
                   <div className="flex-1 min-w-0 mr-2">
-                    <p className={`text-sm font-semibold truncate ${currentConvId === conv.id ? 'text-blue-700' : 'text-gray-700'}`}>
-                      {conv.title}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-semibold truncate ${currentConvId === conv.id ? 'text-blue-700' : 'text-gray-700'}`}>
+                        {conv.title}
+                      </p>
+                      {conv.language && (
+                        <span
+                          className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded"
+                          style={{
+                            backgroundColor: getLanguageColor(getLanguageCode(conv.language)),
+                            color: 'white',
+                            textShadow: '0 0 2px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.8)'
+                          }}
+                        >
+                          {getLanguageCode(conv.language)}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-gray-400">
                       {new Date(conv.updatedAt).toLocaleDateString()}
                     </p>
@@ -626,6 +653,36 @@ const App: React.FC = () => {
                     placeholder={`[Steven]: "Hi there!"\n[Coach]: "Hello Steven, how are you?"`}
                     className="w-full h-48 p-4 text-sm bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-mono"
                   />
+
+                  <div className="mt-4 space-y-2">
+                    <label className="text-xs font-bold text-gray-600 block">Analysis Language</label>
+                    <select
+                      value={['English', 'Japanese', 'Spanish'].includes(defaultLanguage) ? defaultLanguage : 'Other'}
+                      onChange={(e) => {
+                        if (e.target.value !== 'Other') {
+                          setDefaultLanguage(e.target.value);
+                        } else {
+                          setDefaultLanguage('');
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                      <option value="English">English</option>
+                      <option value="Japanese">Japanese</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="Other">Other...</option>
+                    </select>
+                    {!['English', 'Japanese', 'Spanish'].includes(defaultLanguage) && (
+                      <input
+                        type="text"
+                        value={defaultLanguage}
+                        onChange={(e) => setDefaultLanguage(e.target.value)}
+                        placeholder="Enter language name (e.g., German, French)"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                      />
+                    )}
+                  </div>
+
                   <button
                     onClick={parseConversation}
                     disabled={!inputText.trim()}
@@ -702,7 +759,7 @@ const App: React.FC = () => {
       )}
 
       {isTopicOpen && (
-        <TopicModal onClose={() => setIsTopicOpen(false)} />
+        <TopicModal onClose={() => setIsTopicOpen(false)} language={defaultLanguage} />
       )}
 
       {convIdToDelete && (

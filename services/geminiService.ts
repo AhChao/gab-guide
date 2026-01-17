@@ -12,20 +12,20 @@ export const buildContext = (messages: Message[], upToIndex: number): string => 
     .join('\n');
 };
 
-export const analyzeMessage = async (apiKey: string, model: GeminiModel, message: string, context: string): Promise<AnalysisResult> => {
+export const analyzeMessage = async (apiKey: string, model: GeminiModel, message: string, context: string, language: string = 'English'): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model,
-    contents: `Analyze this English learner's sentence: "${message}" within the context of this conversation: "${context}". Provide a detailed linguistic analysis.`,
+    contents: `Analyze this ${language} learner's sentence: "${message}" within the context of this conversation: "${context}". Provide a detailed linguistic analysis.`,
     config: {
-      systemInstruction: `You are an expert English language coach helping an English learner practice small talk. Analyze the learner's sentence for grammar, naturalness, and small talk effectiveness. 
+      systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk. Analyze the learner's sentence for grammar, naturalness, and small talk effectiveness in ${language}. 
       Return JSON format. 
       - grammarErrors: Detail any mistakes or awkward phrasing.
       - grammarScore: A score from 1 (poor) to 10 (perfect).
-      - naturalnessRating: Evaluate how a native speaker would perceive this.
+      - naturalnessRating: Evaluate how a native ${language} speaker would perceive this.
       - naturalnessScore: A score from 1 (robotic/awkward) to 10 (completely native).
-      - improvement: Provide a simpler, more natural way to say the same thing.
-      - extensions: Suggest what the LEARNER could say next to keep the conversation going. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
+      - improvement: Provide a simpler, more natural way to say the same thing in ${language}.
+      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
       - isNatural: true if no changes needed, false otherwise.`,
       responseMimeType: "application/json",
       responseSchema: {
@@ -56,7 +56,8 @@ export const analyzeBatchMessages = async (
   apiKey: string,
   model: GeminiModel,
   allMessages: Message[],
-  userMessagesToAnalyze: { id: string; text: string; index: number }[]
+  userMessagesToAnalyze: { id: string; text: string; index: number }[],
+  language: string = 'English'
 ): Promise<BatchAnalysisItem[]> => {
   if (userMessagesToAnalyze.length === 0) return [];
 
@@ -70,20 +71,20 @@ export const analyzeBatchMessages = async (
 
   const response = await ai.models.generateContent({
     model,
-    contents: `Analyze the following English learner sentences. Each has its own context. Return an array of analysis objects, one for each message, keyed by "id".
+    contents: `Analyze the following ${language} learner sentences. Each has its own context. Return an array of analysis objects, one for each message, keyed by "id".
 
 Messages to analyze:
 ${JSON.stringify(messagesForPrompt, null, 2)}`,
     config: {
-      systemInstruction: `You are an expert English language coach helping an English learner practice small talk. For EACH message provided, analyze for grammar, naturalness, and small talk effectiveness.
+      systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk. For EACH message provided, analyze for grammar, naturalness, and small talk effectiveness in ${language}.
       Return a JSON array where each object has:
       - id: The message id provided.
       - grammarErrors: Detail any mistakes or awkward phrasing.
       - grammarScore: A score from 1 (poor) to 10 (perfect).
-      - naturalnessRating: Evaluate how a native speaker would perceive this.
+      - naturalnessRating: Evaluate how a native ${language} speaker would perceive this.
       - naturalnessScore: A score from 1 (robotic/awkward) to 10 (completely native).
-      - improvement: Provide a simpler, more natural way to say the same thing.
-      - extensions: Suggest what the LEARNER could say next to keep the conversation going. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
+      - improvement: Provide a simpler, more natural way to say the same thing in ${language}.
+      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
       - isNatural: true if no changes needed, false otherwise.`,
       responseMimeType: "application/json",
       responseSchema: {
@@ -121,14 +122,14 @@ ${JSON.stringify(messagesForPrompt, null, 2)}`,
   }));
 };
 
-export const summarizeConversation = async (apiKey: string, model: GeminiModel, conversationText: string): Promise<{ summary: ConversationSummary, title: string }> => {
+export const summarizeConversation = async (apiKey: string, model: GeminiModel, conversationText: string, language: string = 'English'): Promise<{ summary: ConversationSummary, title: string }> => {
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model,
-    contents: `Summarize the overall performance, provide advanced vocabulary, and create a 3-5 word title for this conversation:\n\n${conversationText}`,
+    contents: `Summarize the overall ${language} performance, provide advanced vocabulary, and create a 3-5 word title for this conversation:\n\n${conversationText}`,
     config: {
-      systemInstruction: `You are a professional linguist and English coach. 
-      Evaluate the overall conversation performance and provide 8-10 specific vocabulary items.
+      systemInstruction: `You are a professional linguist and ${language} coach. 
+      Evaluate the overall conversation performance in ${language} and provide 8-10 specific vocabulary items in ${language}.
       Also generate a short descriptive title (3-5 words) that captures the topic.
       Return JSON format.
       - title: A short string title.
