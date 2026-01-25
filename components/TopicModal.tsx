@@ -248,9 +248,13 @@ When I say "let's start", ask me this question in a casual, friendly way in ${se
                                     </button>
                                 </div>
                                 <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                                    <p className="text-lg text-gray-800 leading-relaxed font-medium">
-                                        {currentTopic}
-                                    </p>
+                                    <input
+                                        type="text"
+                                        value={currentTopic}
+                                        onChange={(e) => setCurrentTopic(e.target.value)}
+                                        className="w-full text-lg text-gray-800 leading-relaxed font-medium bg-transparent border-none outline-none focus:ring-0 p-0"
+                                        placeholder="Enter your topic..."
+                                    />
                                 </div>
                             </div>
 
