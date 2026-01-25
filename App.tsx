@@ -7,6 +7,8 @@ import { SummaryModal } from './components/SummaryModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { TopicModal } from './components/TopicModal';
+import { ExportDropdown } from './components/ExportDropdown';
+import { TutorialModal } from './components/TutorialModal';
 import { analyzeMessage, summarizeConversation, analyzeBatchMessages } from './services/geminiService';
 import { parseConversationText } from './utils/conversationParser';
 import { getLanguageCode, getLanguageColor } from './utils/languageUtils';
@@ -51,6 +53,7 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTopicOpen, setIsTopicOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   // Edit Mode & Confirmations
   const [isEditMode, setIsEditMode] = useState(false);
@@ -511,56 +514,54 @@ const App: React.FC = () => {
                 <>
                   <button
                     onClick={() => setIsEditMode(true)}
-                    className="hidden sm:flex items-center space-x-2 px-3 py-2 text-gray-500 hover:text-gray-700 font-bold rounded-lg transition-colors text-xs border border-gray-100 bg-white"
+                    className="flex items-center space-x-2 px-2 sm:px-3 py-2 text-gray-500 hover:text-gray-700 font-bold rounded-lg transition-colors text-xs border border-gray-100 bg-white"
+                    title="Edit Chat"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    <span>Edit Chat</span>
+                    <span className="hidden sm:inline">Edit Chat</span>
                   </button>
                   <button
                     onClick={handleAnalyzeAll}
                     disabled={isAnalyzingAll}
-                    className="hidden md:flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 text-xs"
+                    className="flex items-center space-x-2 px-2 sm:px-3 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 text-xs"
+                    title="Analyze All"
                   >
-                    {isAnalyzingAll ? <span className="w-3 h-3 border-2 border-gray-700 border-t-transparent animate-spin rounded-full"></span> : null}
-                    <span>Analyze All</span>
+                    {isAnalyzingAll ? (
+                      <span className="w-3 h-3 border-2 border-gray-700 border-t-transparent animate-spin rounded-full"></span>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">Analyze All</span>
                   </button>
 
                   <button
                     onClick={handleSummarize}
                     disabled={isSummaryLoading}
-                    className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 text-xs"
+                    className="flex items-center space-x-2 px-2 sm:px-3 py-2 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 text-xs"
+                    title={summary ? 'View Summary' : 'Summarize'}
                   >
-                    {isSummaryLoading ? <span className="w-3 h-3 border-2 border-blue-700 border-t-transparent animate-spin rounded-full"></span> : null}
-                    <span>{summary ? 'View Summary' : 'Summarize'}</span>
+                    {isSummaryLoading ? (
+                      <span className="w-3 h-3 border-2 border-blue-700 border-t-transparent animate-spin rounded-full"></span>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">{summary ? 'View Summary' : 'Summarize'}</span>
                   </button>
 
-                  <div className="flex bg-gray-100 p-1 rounded-lg space-x-1">
-                    <button
-                      onClick={handleExportTXT}
-                      className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-white rounded transition-all"
-                      title="Export as TXT"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={handleExportPDF}
-                      className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-white rounded transition-all"
-                      title="Export for PDF/Print"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17h6M9 13h6" />
-                      </svg>
-                    </button>
-                  </div>
+                  <ExportDropdown
+                    onExportTXT={handleExportTXT}
+                    onExportPDF={handleExportPDF}
+                  />
 
                   <button
                     onClick={() => setShowResetConfirm(true)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                    className="hidden sm:flex p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                     title="Clear All History"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -572,8 +573,18 @@ const App: React.FC = () => {
             </>
           )}
           <button
+            onClick={() => setIsTutorialOpen(true)}
+            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+            title="Tutorial"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg"
+            title="Settings"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -855,6 +866,10 @@ const App: React.FC = () => {
             }
           }}
         />
+      )}
+
+      {isTutorialOpen && (
+        <TutorialModal onClose={() => setIsTutorialOpen(false)} />
       )}
 
       {convIdToDelete && (
