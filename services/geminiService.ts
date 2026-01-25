@@ -23,10 +23,10 @@ export const analyzeMessage = async (apiKey: string, model: GeminiModel, message
       Return JSON format. 
       - grammarErrors: Detail any mistakes or awkward phrasing.
       - grammarScore: A score from 1 (poor) to 10 (perfect).
-      - naturalnessRating: Evaluate how a native ${language} speaker would perceive this.
-      - naturalnessScore: A score from 1 (robotic/awkward) to 10 (completely native).
-      - improvement: Provide a simpler, more natural way to say the same thing in ${language}.
-      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
+      - naturalnessRating: Evaluate how native-like this expression sounds. Consider: (1) Would a native speaker use these exact words/phrases in casual conversation? (2) Does it use natural, idiomatic expressions rather than textbook language? (3) Is the vocabulary choice what a native speaker would naturally pick? Note: Natural hesitation markers (um, uh, well, like) are acceptable and can make speech more authentic - don't penalize appropriate use of fillers.
+      - naturalnessScore: A score from 1 (very textbook/unnatural) to 10 (sounds exactly like a native speaker in casual conversation).
+      - improvement: Provide a more native-like, idiomatic way to express the same idea in ${language}. Show how a native speaker would naturally say this in casual small talk.
+      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. Provide 2-3 specific follow-up options the learner can use, such as: a follow-up question to show interest, a related comment or personal experience to share, or a way to expand or redirect the topic. Do NOT suggest how the conversation partner (ChatGPT) would reply. Focus only on what the LEARNER should say.
       - isNatural: true if no changes needed, false otherwise.`,
       responseMimeType: "application/json",
       responseSchema: {
@@ -82,10 +82,10 @@ ${JSON.stringify(messagesForPrompt, null, 2)}`,
       - id: The message id provided.
       - grammarErrors: Detail any mistakes or awkward phrasing.
       - grammarScore: A score from 1 (poor) to 10 (perfect).
-      - naturalnessRating: Evaluate how a native ${language} speaker would perceive this.
-      - naturalnessScore: A score from 1 (robotic/awkward) to 10 (completely native).
-      - improvement: Provide a simpler, more natural way to say the same thing in ${language}.
-      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. This should be follow-up phrases, questions, or comments the learner can add to expand the topic or echo the other person. Do NOT suggest how the conversation partner would reply.
+      - naturalnessRating: Evaluate how native-like this expression sounds. Consider: (1) Would a native speaker use these exact words/phrases in casual conversation? (2) Does it use natural, idiomatic expressions rather than textbook language? (3) Is the vocabulary choice what a native speaker would naturally pick? Note: Natural hesitation markers (um, uh, well, like) are acceptable and can make speech more authentic - don't penalize appropriate use of fillers.
+      - naturalnessScore: A score from 1 (very textbook/unnatural) to 10 (sounds exactly like a native speaker in casual conversation).
+      - improvement: Provide a more native-like, idiomatic way to express the same idea in ${language}. Show how a native speaker would naturally say this in casual small talk.
+      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. Provide 2-3 specific follow-up options the learner can use, such as: a follow-up question to show interest, a related comment or personal experience to share, or a way to expand or redirect the topic. Do NOT suggest how the conversation partner (ChatGPT) would reply. Focus only on what the LEARNER should say.
       - isNatural: true if no changes needed, false otherwise.`,
       responseMimeType: "application/json",
       responseSchema: {
@@ -130,18 +130,20 @@ export const summarizeConversation = async (apiKey: string, model: GeminiModel, 
     contents: `Summarize the overall ${language} performance, provide advanced vocabulary, and create a 3-5 word title for this conversation:\n\n${conversationText}`,
     config: {
       systemInstruction: `You are a professional linguist and ${language} coach. 
-      Evaluate the overall conversation performance in ${language} and provide 8-10 specific vocabulary items in ${language}.
+      Evaluate ONLY the learner's performance in ${language}. Ignore the conversation partner's messages (assume they are from ChatGPT or a native speaker). 
+      Focus exclusively on analyzing the learner's grammar, clarity, and conversation flow. 
+      Provide 8-10 specific vocabulary items in ${language} that would help the LEARNER improve.
       Also generate a short descriptive title (3-5 words) that captures the topic.
       Return JSON format.
       - title: A short string title.
-      - grammarPerformance: Overall grammar summary.
-      - grammarScore: A score from 1 (poor) to 10 (perfect).
-      - clarityEvaluation: Clarity analysis.
-      - clarityScore: A score from 1 (unclear) to 10 (crystal clear).
-      - flowAnalysis: Flow analysis.
-      - flowScore: A score from 1 (choppy/disconnected) to 10 (smooth/natural).
-      - keySuggestions: Array of improvement points.
-      - suggestedVocabulary: Array of {phrase, reason, example}.`,
+      - grammarPerformance: Overall grammar summary of the LEARNER's messages only.
+      - grammarScore: A score from 1 (poor) to 10 (perfect) for the LEARNER.
+      - clarityEvaluation: Clarity analysis of the LEARNER's expression.
+      - clarityScore: A score from 1 (unclear) to 10 (crystal clear) for the LEARNER.
+      - flowAnalysis: Flow analysis of how well the LEARNER maintained conversation momentum.
+      - flowScore: A score from 1 (choppy/disconnected) to 10 (smooth/natural) for the LEARNER.
+      - keySuggestions: Array of improvement points for the LEARNER.
+      - suggestedVocabulary: Array of {phrase, reason, example} to help the LEARNER.`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
