@@ -19,15 +19,41 @@ export const analyzeMessage = async (apiKey: string, model: GeminiModel, message
     model,
     contents: `Analyze this ${language} learner's sentence: "${message}" within the context of this conversation: "${context}". Provide a detailed linguistic analysis.`,
     config: {
-      systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk. Analyze the learner's sentence for grammar, naturalness, and small talk effectiveness in ${language}. 
-      Return JSON format. 
-      - grammarErrors: Detail any mistakes or awkward phrasing.
-      - grammarScore: A score from 1 (poor) to 10 (perfect).
-      - naturalnessRating: Evaluate how native-like this expression sounds. Consider: (1) Would a native speaker use these exact words/phrases in casual conversation? (2) Does it use natural, idiomatic expressions rather than textbook language? (3) Is the vocabulary choice what a native speaker would naturally pick? Note: Natural hesitation markers (um, uh, well, like) are acceptable and can make speech more authentic - don't penalize appropriate use of fillers.
-      - naturalnessScore: A score from 1 (very textbook/unnatural) to 10 (sounds exactly like a native speaker in casual conversation).
-      - improvement: Provide a more native-like, idiomatic way to express the same idea in ${language}. Show how a native speaker would naturally say this in casual small talk.
-      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. Provide 2-3 specific follow-up options the learner can use, such as: a follow-up question to show interest, a related comment or personal experience to share, or a way to expand or redirect the topic. Do NOT suggest how the conversation partner (ChatGPT) would reply. Focus only on what the LEARNER should say.
-      - isNatural: true if no changes needed, false otherwise.`,
+      systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk.
+
+SCORING RUBRIC (1-10 scale based on IELTS/CEFR standards):
+
+GRAMMAR SCORE:
+1-2: Severe errors throughout (Pre-A1), communication severely impaired, fundamental grammar missing
+3-4: Frequent basic errors (A1/IELTS 3-4), errors often obscure meaning, limited to simple structures
+5: Basic structures with regular errors (A2/IELTS 5), errors sometimes affect meaning
+6: Reasonable accuracy in familiar contexts (B1/IELTS 5.5-6), errors rarely impede communication
+7: Good range with minor errors (B2/IELTS 6.5-7), variety of complex structures, infrequent errors
+8: Consistent accuracy with occasional slips (B2+/IELTS 7.5), rare errors in advanced structures
+9: High degree of accuracy (C1/IELTS 8-8.5), errors rare and difficult to spot
+10: Native-like accuracy (C2/IELTS 9), extremely rare errors, near-perfect control
+
+NATURALNESS SCORE:
+1-2: Completely unnatural/robotic (Pre-A1), isolated words only, no natural flow
+3-4: Very textbook-like (A1/IELTS 3-4), heavily dependent on memorized phrases, sounds strange to natives
+5: Functional but stilted (A2/IELTS 5), lacks idiomatic language, overly formal or simple
+6: Understandable with some natural elements (B1/IELTS 5.5-6), some conversational markers, noticeable non-native patterns
+7: Mostly natural with minor awkwardness (B2/IELTS 6.5-7), good use of idioms and conversational markers
+8: Natural with occasional non-native patterns (B2+/IELTS 7.5), good command of colloquialisms
+9: Very natural, near-native (C1/IELTS 8-8.5), fluent and spontaneous, very rare unnatural expressions
+10: Indistinguishable from native speaker (C2/IELTS 9), perfect command of idioms and cultural references
+
+IMPORTANT: Natural hesitation markers (um, uh, well, like) are POSITIVE for naturalness when used appropriately.
+
+Analyze this ${language} learner's sentence: "${message}" within the context: "${context}".
+Return JSON format with:
+- grammarErrors: Detail any mistakes or awkward phrasing
+- grammarScore: Score using the rubric above (1-10)
+- naturalnessRating: Evaluate how native-like this sounds, referencing the rubric levels
+- naturalnessScore: Score using the rubric above (1-10)
+- improvement: Provide a more native-like, idiomatic alternative in ${language}
+- extensions: Suggest 2-3 specific follow-up options the LEARNER could say next
+- isNatural: true if no changes needed, false otherwise`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -77,16 +103,42 @@ export const analyzeBatchMessages = async (
 Messages to analyze:
 ${JSON.stringify(messagesForPrompt, null, 2)}`,
     config: {
-      systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk. For EACH message provided, analyze for grammar, naturalness, and small talk effectiveness in ${language}.
-      Return a JSON array where each object has:
-      - id: The message id provided.
-      - grammarErrors: Detail any mistakes or awkward phrasing.
-      - grammarScore: A score from 1 (poor) to 10 (perfect).
-      - naturalnessRating: Evaluate how native-like this expression sounds. Consider: (1) Would a native speaker use these exact words/phrases in casual conversation? (2) Does it use natural, idiomatic expressions rather than textbook language? (3) Is the vocabulary choice what a native speaker would naturally pick? Note: Natural hesitation markers (um, uh, well, like) are acceptable and can make speech more authentic - don't penalize appropriate use of fillers.
-      - naturalnessScore: A score from 1 (very textbook/unnatural) to 10 (sounds exactly like a native speaker in casual conversation).
-      - improvement: Provide a more native-like, idiomatic way to express the same idea in ${language}. Show how a native speaker would naturally say this in casual small talk.
-      - extensions: Suggest what the LEARNER could say next to keep the conversation going in ${language}. Provide 2-3 specific follow-up options the learner can use, such as: a follow-up question to show interest, a related comment or personal experience to share, or a way to expand or redirect the topic. Do NOT suggest how the conversation partner (ChatGPT) would reply. Focus only on what the LEARNER should say.
-      - isNatural: true if no changes needed, false otherwise.`,
+      systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk.
+
+SCORING RUBRIC (1-10 scale based on IELTS/CEFR standards):
+
+GRAMMAR SCORE:
+1-2: Severe errors throughout (Pre-A1), communication severely impaired, fundamental grammar missing
+3-4: Frequent basic errors (A1/IELTS 3-4), errors often obscure meaning, limited to simple structures
+5: Basic structures with regular errors (A2/IELTS 5), errors sometimes affect meaning
+6: Reasonable accuracy in familiar contexts (B1/IELTS 5.5-6), errors rarely impede communication
+7: Good range with minor errors (B2/IELTS 6.5-7), variety of complex structures, infrequent errors
+8: Consistent accuracy with occasional slips (B2+/IELTS 7.5), rare errors in advanced structures
+9: High degree of accuracy (C1/IELTS 8-8.5), errors rare and difficult to spot
+10: Native-like accuracy (C2/IELTS 9), extremely rare errors, near-perfect control
+
+NATURALNESS SCORE:
+1-2: Completely unnatural/robotic (Pre-A1), isolated words only, no natural flow
+3-4: Very textbook-like (A1/IELTS 3-4), heavily dependent on memorized phrases, sounds strange to natives
+5: Functional but stilted (A2/IELTS 5), lacks idiomatic language, overly formal or simple
+6: Understandable with some natural elements (B1/IELTS 5.5-6), some conversational markers, noticeable non-native patterns
+7: Mostly natural with minor awkwardness (B2/IELTS 6.5-7), good use of idioms and conversational markers
+8: Natural with occasional non-native patterns (B2+/IELTS 7.5), good command of colloquialisms
+9: Very natural, near-native (C1/IELTS 8-8.5), fluent and spontaneous, very rare unnatural expressions
+10: Indistinguishable from native speaker (C2/IELTS 9), perfect command of idioms and cultural references
+
+IMPORTANT: Natural hesitation markers (um, uh, well, like) are POSITIVE for naturalness when used appropriately.
+
+For EACH message provided, analyze for grammar, naturalness, and small talk effectiveness in ${language}.
+Return a JSON array where each object has:
+- id: The message id provided
+- grammarErrors: Detail any mistakes or awkward phrasing
+- grammarScore: Score using the rubric above (1-10)
+- naturalnessRating: Evaluate how native-like this sounds, referencing the rubric levels
+- naturalnessScore: Score using the rubric above (1-10)
+- improvement: Provide a more native-like, idiomatic alternative in ${language}
+- extensions: Suggest 2-3 specific follow-up options the LEARNER could say next
+- isNatural: true if no changes needed, false otherwise`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -131,7 +183,36 @@ export const summarizeConversation = async (apiKey: string, model: GeminiModel, 
     config: {
       systemInstruction: `You are a professional linguist and ${language} coach. 
       Evaluate ONLY the learner's performance in ${language}. Ignore the conversation partner's messages (assume they are from ChatGPT or a native speaker). 
-      Focus exclusively on analyzing the learner's grammar, clarity, and conversation flow. 
+      Focus exclusively on analyzing the learner's grammar, clarity, and conversation flow.
+
+      CRITICAL: Your summary scores must align with the individual message scores.
+      - Calculate the average of individual message scores if available, or estimate based on the text.
+      - Summary scores should be within ±1 point of the average specific message performance.
+      - If most messages would score 7-8, the summary should be 7-8 (not 5 or 10).
+      - Do not artificially inflate or deflate scores.
+
+      SCORING RUBRIC (1-10 scale based on IELTS/CEFR standards):
+
+      GRAMMAR SCORE:
+      1-2: Severe errors throughout (Pre-A1), communication severely impaired
+      3-4: Frequent basic errors (A1/IELTS 3-4), errors often obscure meaning
+      5: Basic structures with regular errors (A2/IELTS 5), errors sometimes affect meaning
+      6: Reasonable accuracy in familiar contexts (B1/IELTS 5.5-6), errors rarely impede communication
+      7: Good range with minor errors (B2/IELTS 6.5-7), infrequent errors
+      8: Consistent accuracy with occasional slips (B2+/IELTS 7.5), rare errors
+      9: High degree of accuracy (C1/IELTS 8-8.5), errors rare and difficult to spot
+      10: Native-like accuracy (C2/IELTS 9), extremely rare errors
+
+      CLARITY & FLOW SCORE (Similar to Naturalness):
+      1-2: Disconnected, robotic, very hard to follow (Pre-A1)
+      3-4: Very stilted, heavy reliance on translation/memory (A1)
+      5: Functional but halting, frequent pauses (A2)
+      6: Understandable linear sequence, some hesitation (B1)
+      7: Mostly smooth, good use of connectors (B2)
+      8: Natural flow with occasional non-native rhythm (B2+)
+      9: Very fluid and spontaneous (C1)
+      10: Effortless, indistinguishable from native speaker (C2)
+      
       Provide 8-10 specific vocabulary items in ${language} that would help the LEARNER improve.
       Also generate a short descriptive title (3-5 words) that captures the topic.
       Return JSON format.
