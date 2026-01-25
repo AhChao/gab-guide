@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { AnalysisResult, AnalysisState } from '../types/index';
+import { parseExtensions } from '../utils/extensionsParser';
 
 interface AnalysisDrawerProps {
   analysis: AnalysisResult | null;
@@ -107,8 +108,8 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ analysis, state,
                 </svg>
                 Small Talk Boosters
               </h4>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {analysis.extensions}
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                {parseExtensions(analysis.extensions)}
               </p>
             </section>
           </div>

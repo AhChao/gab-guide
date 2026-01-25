@@ -640,7 +640,7 @@ const App: React.FC = () => {
                 >
                   <div className="flex-1 min-w-0 mr-2">
                     <div className="flex items-center gap-2">
-                      <p className={`text-sm font-semibold truncate ${currentConvId === conv.id ? 'text-blue-700' : 'text-gray-700'}`}>
+                      <p className={`flex-1 min-w-0 text-sm font-semibold truncate ${currentConvId === conv.id ? 'text-blue-700' : 'text-gray-700'}`}>
                         {conv.title}
                       </p>
                       {conv.language && (
