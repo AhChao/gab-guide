@@ -15,9 +15,22 @@ export const buildContext = (messages: Message[], upToIndex: number): string => 
 
 export const analyzeMessage = async (apiKey: string, model: GeminiModel, message: string, context: string, language: string = 'English'): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey });
+
+  // Use the same structure as analyzeBatchMessages for consistency
+  const messagesToAnalyzeList = [{ id: 'current', text: message }];
+
   const response = await ai.models.generateContent({
     model,
-    contents: `Analyze this ${language} learner's sentence: "${message}" within the context of this conversation: "${context}". Provide a detailed linguistic analysis.`,
+    contents: `Analyze the following specific message based on the conversation transcript provided below.
+
+TRANSCRIPT START
+${context}
+TRANSCRIPT END
+
+MESSAGES TO ANALYZE:
+${JSON.stringify(messagesToAnalyzeList, null, 2)}
+
+Return a JSON object with the analysis for the message.`,
     config: {
       systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk.
 
@@ -45,8 +58,12 @@ NATURALNESS SCORE:
 
 IMPORTANT: Natural hesitation markers (um, uh, well, like) are POSITIVE for naturalness when used appropriately.
 
-Analyze this ${language} learner's sentence: "${message}" within the context: "${context}".
-Return JSON format with:
+Task:
+1. Read the provided TRANSCRIPT to understand the full context.
+2. Analyze the specific message provided in the "MESSAGES TO ANALYZE" list.
+3. Return a JSON object with the analysis details.
+
+JSON Output Format:
 - grammarErrors: Detail any mistakes or awkward phrasing
 - grammarScore: Score using the rubric above (1-10)
 - naturalnessRating: Evaluate how native-like this sounds, referencing the rubric levels
@@ -89,21 +106,38 @@ export const analyzeBatchMessages = async (
   if (userMessagesToAnalyze.length === 0) return [];
 
   const ai = new GoogleGenAI({ apiKey });
+  const BATCH_SIZE = 15; // Process in chunks to avoid output token limits
+  const results: BatchAnalysisItem[] = [];
 
-  const messagesForPrompt = userMessagesToAnalyze.map(m => ({
-    id: m.id,
-    text: m.text,
-    context: buildContext(allMessages, m.index)
-  }));
+  // 1. Build the shared transcript once
+  // We include index/sender/text to give the AI full context reference
+  const transcript = allMessages
+    .map((m) => `${m.sender}: ${m.text}`)
+    .join('\n');
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Analyze the following ${language} learner sentences. Each has its own context. Return an array of analysis objects, one for each message, keyed by "id".
+  // 2. Process in chunks
+  for (let i = 0; i < userMessagesToAnalyze.length; i += BATCH_SIZE) {
+    const batch = userMessagesToAnalyze.slice(i, i + BATCH_SIZE);
 
-Messages to analyze:
-${JSON.stringify(messagesForPrompt, null, 2)}`,
-    config: {
-      systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk.
+    const messagesToAnalyzeList = batch.map(m => ({
+      id: m.id,
+      text: m.text
+    }));
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: `Analyze the following specific messages based on the conversation transcript provided below.
+
+TRANSCRIPT START
+${transcript}
+TRANSCRIPT END
+
+MESSAGES TO ANALYZE:
+${JSON.stringify(messagesToAnalyzeList, null, 2)}
+
+Return a JSON array of analysis objects, one for each message in the "MESSAGES TO ANALYZE" list, keyed by "id".`,
+      config: {
+        systemInstruction: `You are an expert ${language} language coach helping a ${language} learner practice small talk.
 
 SCORING RUBRIC (1-10 scale based on IELTS/CEFR standards):
 
@@ -129,8 +163,12 @@ NATURALNESS SCORE:
 
 IMPORTANT: Natural hesitation markers (um, uh, well, like) are POSITIVE for naturalness when used appropriately.
 
-For EACH message provided, analyze for grammar, naturalness, and small talk effectiveness in ${language}.
-Return a JSON array where each object has:
+Task:
+1. Read the provided TRANSCRIPT to understand the full context.
+2. For EACH message in the "MESSAGES TO ANALYZE" list, provide a detailed analysis.
+3. Return a JSON array matching the request.
+
+JSON Output Format (Array of Objects):
 - id: The message id provided
 - grammarErrors: Detail any mistakes or awkward phrasing
 - grammarScore: Score using the rubric above (1-10)
@@ -139,40 +177,48 @@ Return a JSON array where each object has:
 - improvement: Provide a more native-like, idiomatic alternative in ${language}
 - extensions: Suggest 2-3 specific follow-up options the LEARNER could say next
 - isNatural: true if no changes needed, false otherwise`,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            grammarErrors: { type: Type.STRING },
-            grammarScore: { type: Type.NUMBER },
-            naturalnessRating: { type: Type.STRING },
-            naturalnessScore: { type: Type.NUMBER },
-            improvement: { type: Type.STRING },
-            extensions: { type: Type.STRING },
-            isNatural: { type: Type.BOOLEAN },
-          },
-          required: ["id", "grammarErrors", "grammarScore", "naturalnessRating", "naturalnessScore", "improvement", "extensions", "isNatural"]
-        }
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              grammarErrors: { type: Type.STRING },
+              grammarScore: { type: Type.NUMBER },
+              naturalnessRating: { type: Type.STRING },
+              naturalnessScore: { type: Type.NUMBER },
+              improvement: { type: Type.STRING },
+              extensions: { type: Type.STRING },
+              isNatural: { type: Type.BOOLEAN },
+            },
+            required: ["id", "grammarErrors", "grammarScore", "naturalnessRating", "naturalnessScore", "improvement", "extensions", "isNatural"]
+          }
+        },
       },
-    },
-  });
+    });
 
-  const parsed = JSON.parse(response.text) as Array<{ id: string } & AnalysisResult>;
-  return parsed.map(item => ({
-    messageId: item.id,
-    analysis: {
-      grammarErrors: item.grammarErrors,
-      grammarScore: item.grammarScore,
-      naturalnessRating: item.naturalnessRating,
-      naturalnessScore: item.naturalnessScore,
-      improvement: item.improvement,
-      extensions: item.extensions,
-      isNatural: item.isNatural,
+    try {
+      const parsed = JSON.parse(response.text) as Array<{ id: string } & AnalysisResult>;
+      results.push(...parsed.map(item => ({
+        messageId: item.id,
+        analysis: {
+          grammarErrors: item.grammarErrors,
+          grammarScore: item.grammarScore,
+          naturalnessRating: item.naturalnessRating,
+          naturalnessScore: item.naturalnessScore,
+          improvement: item.improvement,
+          extensions: item.extensions,
+          isNatural: item.isNatural,
+        }
+      })));
+    } catch (e) {
+      console.error("Failed to parse batch response", e);
+      // Continue to next batch even if one fails
     }
-  }));
+  }
+
+  return results;
 };
 
 export const summarizeConversation = async (apiKey: string, model: GeminiModel, conversationText: string, language: string = 'English'): Promise<{ summary: ConversationSummary, title: string }> => {

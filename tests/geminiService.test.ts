@@ -163,15 +163,20 @@ describe('geminiService', () => {
                 text: JSON.stringify(mockResponse)
             });
 
-            await analyzeMessage(mockApiKey, mockModel, 'こんにちは', 'User: こんにちは', 'Japanese');
+            await analyzeMessage(mockApiKey, mockModel, 'Hello', 'Previous context', 'Spanish');
 
-            expect(mockGenerateContent).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    config: expect.objectContaining({
-                        systemInstruction: expect.stringContaining('Japanese')
-                    })
-                })
-            );
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            const content = callArgs.contents;
+
+            // Verify new prompt structure
+            expect(content).toContain('TRANSCRIPT START');
+            expect(content).toContain('Previous context');
+            expect(content).toContain('TRANSCRIPT END');
+            expect(content).toContain('MESSAGES TO ANALYZE');
+            expect(content).toContain('"text": "Hello"');
+
+            // Verify language setting
+            expect(callArgs.config.systemInstruction).toContain('Spanish language coach');
         });
 
         it('should throw error when API fails', async () => {
@@ -188,7 +193,7 @@ describe('geminiService', () => {
             expect(result).toEqual([]);
         });
 
-        it('should return array of analysis results keyed by message id', async () => {
+        it('should return array of analysis results keyed by message id using shared transcript', async () => {
             const mockBatchResponse = [
                 {
                     id: 'msg-1',
@@ -233,6 +238,21 @@ describe('geminiService', () => {
             expect(result[0].analysis.grammarScore).toBe(7);
             expect(result[1].messageId).toBe('msg-2');
             expect(result[1].analysis.grammarScore).toBe(10);
+
+            // Verify the prompt structure for Shared Context
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            const content = callArgs.contents;
+
+            expect(content).toContain('TRANSCRIPT START');
+            expect(content).toContain('TRANSCRIPT END');
+            expect(content).toContain('MESSAGES TO ANALYZE');
+
+            // Verify transcript content
+            expect(content).toContain('User: Hello');
+            expect(content).toContain('User: World');
+
+            // Verify system instruction contains rubric
+            expect(callArgs.config.systemInstruction).toContain('SCORING RUBRIC');
         });
     });
 
