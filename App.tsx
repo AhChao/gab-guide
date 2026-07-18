@@ -480,7 +480,7 @@ const App: React.FC = () => {
             </svg>
           </button>
           <div className="flex-shrink-0">
-            <img src="/gab-guide/logo.png" alt="Gab Guide Logo" className="w-10 h-10 rounded-xl shadow-sm" />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Gab Guide Logo" className="w-10 h-10 rounded-xl shadow-sm" />
           </div>
           <div className="hidden sm:block">
             <h1 className="text-xl font-bold text-gray-900 leading-tight">Gab Guide</h1>
