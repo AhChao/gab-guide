@@ -2,7 +2,7 @@
 
 Gab Guide is your personal AI-powered English coach designed to help you master the art of small talk. Simply paste your conversation transcripts, and get instant feedback on your grammar, naturalness, and flow.
 
-[Try it!](https://ahchao.github.io/gab-guide/)
+[Try it!](https://gab-guide.omnivorouscat.com/)
 NOTE: remember open in your browser as it would save converstaion history in your browser's local storage.
 If you open in a chat app pop up, it probably would not save your conversation history so you would miss it when you try to see it next time.
 

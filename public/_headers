@@ -1,0 +1,25 @@
+# Cloudflare Pages 快取策略（依 static-asset-cache-policy）。
+# 目標：部署後使用者一個普通 reload 就拿到新版，永遠不需要手動清快取或 Ctrl+Shift+R。
+#
+# vite build 給 JS/CSS 加 content-hash（/assets/index-XXXX.js），檔名變 = 內容變，
+# 故可安全長快取 immutable。其餘不帶 hash 的檔（entry HTML、favicon/logo、教學圖）
+# 用 no-cache —— 瀏覽器存下 body 但每次用 ETag 重新驗證，未變回 304，改版即拿到新檔。
+#
+# 路徑刻意不重疊、也刻意不用 /* ：Pages 會把每一條符合的規則都套上去併成一個 header，
+# `/*` 的 no-cache 會跟著蓋到 /assets/*，讓長快取形同失效。列清楚各自路徑才不互相污染。
+
+# content-hash 過的 bundle → 一年 immutable，改版換檔名自然破快取。
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 會隨改版變動、且不帶 hash 的檔 → 永遠重新驗證。
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/favicon.png
+  Cache-Control: no-cache
+/logo.png
+  Cache-Control: no-cache
+/tutorial/*
+  Cache-Control: no-cache

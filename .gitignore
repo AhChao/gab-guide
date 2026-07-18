@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 info/
+
+# Wrangler / Cloudflare local state
+.wrangler

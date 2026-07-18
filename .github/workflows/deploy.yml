@@ -1,8 +1,10 @@
 name: Deploy to GitHub Pages
 
+# DORMANT: primary hosting moved to Cloudflare Pages (gab-guide.lenguage.cc, see DEPLOY.md).
+# The push trigger is removed so this no longer runs on every commit; kept for recovery only.
+# NOTE: vite base is now '/' (subdomain root). GitHub Pages serves from /gab-guide/, so if you
+# ever re-enable this, build with `vite build --base=/gab-guide/` or assets will 404.
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:

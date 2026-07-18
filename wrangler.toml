@@ -1,0 +1,8 @@
+name = "gab-guide"
+compatibility_date = "2026-07-18"
+pages_build_output_dir = "dist"
+
+# 純前端站：無 Functions、無 D1、無 secrets、無執行期相依。
+# 分析/計分呼叫由使用者自帶的 Gemini API key 在瀏覽器端直打，沒有後端可打。
+# dist/ 由 `npm run build`（vite build）產生，JS/CSS 帶 content-hash。
+# 快取策略走 dist/_headers（來源 public/_headers，vite build 會複製）。

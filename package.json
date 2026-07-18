@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "deploy": "npm run build && npx wrangler pages deploy"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",
