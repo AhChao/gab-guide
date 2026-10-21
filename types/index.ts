@@ -26,6 +26,23 @@ export interface VocabularySuggestion {
     example: string;
 }
 
+/** An expression the learner should learn from their own turns. Field meanings match ExpressionDraft in features/bank/model.ts. */
+export interface TargetExpression {
+    phrase: string;
+    concept: string;
+    original?: string;
+    contrast?: string;
+    example?: string;
+    transferPrompt?: string;
+}
+
+/** A natural chunk taken from the conversation partner's turns. */
+export interface PartnerChunk {
+    phrase: string;
+    concept: string;
+    example?: string;
+}
+
 export interface ConversationSummary {
     grammarPerformance: string;
     grammarScore: number;
@@ -35,6 +52,10 @@ export interface ConversationSummary {
     flowScore: number;
     keySuggestions: string[];
     suggestedVocabulary: VocabularySuggestion[];
+    /** Up to 3 (asked for exactly 3). Undefined on summaries saved before this field existed. */
+    targetExpressions?: TargetExpression[];
+    /** Up to 3. Undefined on summaries saved before this field existed. */
+    partnerChunks?: PartnerChunk[];
 }
 
 export interface Conversation {

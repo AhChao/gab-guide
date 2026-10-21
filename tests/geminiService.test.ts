@@ -25,6 +25,7 @@ vi.mock('@google/genai', () => {
 
 // Import after mocking
 import { analyzeMessage, analyzeBatchMessages, summarizeConversation, buildContext, MAX_CONTEXT_MESSAGES } from '../services/geminiService';
+import { geminiGuard, GeminiCallError } from '../services/callGuard';
 
 const mockApiKey = 'test-api-key';
 const mockModel = GeminiModel.GEMINI_2_0_FLASH;
@@ -33,6 +34,8 @@ describe('geminiService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGenerateContent.mockReset();
+        // The guard rejects calls closer than 1.5 s apart; tests call back to back.
+        geminiGuard.reset();
     });
 
     describe('buildContext', () => {
@@ -180,10 +183,14 @@ describe('geminiService', () => {
         });
 
         it('should throw error when API fails', async () => {
+            // The call guard wraps SDK errors in GeminiCallError (learner-facing message);
+            // the original error stays reachable as `cause`. Nothing is retried.
             mockGenerateContent.mockRejectedValue(new Error('API Error'));
 
-            await expect(analyzeMessage(mockApiKey, mockModel, 'Test', 'Context'))
-                .rejects.toThrow('API Error');
+            const err = await analyzeMessage(mockApiKey, mockModel, 'Test', 'Context').catch(e => e);
+            expect(err).toBeInstanceOf(GeminiCallError);
+            expect((err.cause as Error).message).toBe('API Error');
+            expect(mockGenerateContent).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -283,6 +290,129 @@ describe('geminiService', () => {
             expect(result.summary.clarityScore).toBe(9);
             expect(result.summary.flowScore).toBe(8);
             expect(result.summary.keySuggestions).toHaveLength(1);
+        });
+    });
+    describe('call guard integration', () => {
+        const userMessages = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, text: `Line ${i}`, index: i }));
+        const allMessagesFor = (n: number): Message[] => userMessages(n).map(m => ({
+            id: m.id, sender: 'User', text: m.text, role: 'user', timestamp: '10:00'
+        }));
+        const analysisFor = (id: string) => ({
+            id,
+            grammarErrors: 'None.',
+            grammarScore: 8,
+            naturalnessRating: 'Good.',
+            naturalnessScore: 8,
+            improvement: 'Fine.',
+            extensions: 'Go on.',
+            isNatural: true
+        });
+
+        it('stops the batch loop at the first failed batch and makes no further calls', async () => {
+            mockGenerateContent.mockRejectedValue({ status: 429, message: 'RESOURCE_EXHAUSTED' });
+
+            const run = analyzeBatchMessages(mockApiKey, mockModel, allMessagesFor(20), userMessages(20));
+
+            await expect(run).rejects.toBeInstanceOf(GeminiCallError);
+            await expect(run).rejects.toMatchObject({ kind: 'quota' });
+            expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+        });
+
+        it('paces later batches past the guard window instead of being throttled', async () => {
+            vi.useFakeTimers();
+            try {
+                mockGenerateContent
+                    .mockResolvedValueOnce({ text: JSON.stringify(userMessages(15).map(m => analysisFor(m.id))) })
+                    .mockResolvedValueOnce({ text: JSON.stringify([analysisFor('m15'), analysisFor('not-sent')]) });
+
+                const run = analyzeBatchMessages(mockApiKey, mockModel, allMessagesFor(16), userMessages(16));
+                await vi.advanceTimersByTimeAsync(3000);
+                const result = await run;
+
+                expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+                expect(result).toHaveLength(16);
+                expect(result.map(r => r.messageId)).not.toContain('not-sent');
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('wraps a failed single analysis in GeminiCallError after one call', async () => {
+            mockGenerateContent.mockRejectedValue(new Error('API key not valid'));
+
+            await expect(analyzeMessage(mockApiKey, mockModel, 'Test', 'Context'))
+                .rejects.toMatchObject({ name: 'GeminiCallError', kind: 'auth' });
+            expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('summarizeConversation target expressions and partner chunks', () => {
+        const base = {
+            title: 'Weekend Plans',
+            grammarPerformance: 'Solid.',
+            grammarScore: 7,
+            clarityEvaluation: 'Clear.',
+            clarityScore: 7,
+            flowAnalysis: 'Smooth.',
+            flowScore: 7,
+            keySuggestions: ['Be more specific.'],
+            suggestedVocabulary: []
+        };
+        const target = (n: number) => ({
+            phrase: `  phrase ${n}  `,
+            concept: `concept ${n}`,
+            original: `original ${n}`,
+            contrast: `contrast ${n}`,
+            example: `example ${n}`,
+            transferPrompt: `Describe something else ${n}.`
+        });
+
+        it('returns normalized target expressions and partner chunks from the same single call', async () => {
+            mockGenerateContent.mockResolvedValue({
+                text: '```json\n' + JSON.stringify({
+                    ...base,
+                    targetExpressions: [target(1), { phrase: 'no concept' }, target(2), target(3), target(4)],
+                    partnerChunks: [
+                        { phrase: 'fair enough', concept: 'accepting a point', example: 'Fair enough, let us go.' },
+                        { phrase: '', concept: 'empty phrase is dropped', example: 'x' },
+                        { phrase: 'a', concept: 'b', example: '' },
+                        { phrase: 'c', concept: 'd', example: 'e' },
+                        { phrase: 'f', concept: 'g', example: 'h' }
+                    ]
+                }) + '\n```'
+            });
+
+            const result = await summarizeConversation(mockApiKey, mockModel, 'Me: Hi\nChatGPT: Hey there!');
+
+            expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+            expect(result.title).toBe('Weekend Plans');
+            expect(result.summary.grammarScore).toBe(7);
+            expect(result.summary.targetExpressions).toHaveLength(3);
+            expect(result.summary.targetExpressions?.[0]).toEqual({
+                phrase: 'phrase 1',
+                concept: 'concept 1',
+                original: 'original 1',
+                contrast: 'contrast 1',
+                example: 'example 1',
+                transferPrompt: 'Describe something else 1.'
+            });
+            expect(result.summary.targetExpressions?.map(t => t.phrase)).toEqual(['phrase 1', 'phrase 2', 'phrase 3']);
+            expect(result.summary.partnerChunks).toHaveLength(3);
+            expect(result.summary.partnerChunks?.[0]).toEqual({ phrase: 'fair enough', concept: 'accepting a point', example: 'Fair enough, let us go.' });
+            expect(result.summary.partnerChunks?.[1]).toEqual({ phrase: 'a', concept: 'b' });
+
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.responseSchema.required).toEqual(expect.arrayContaining(['targetExpressions', 'partnerChunks']));
+            expect(callArgs.config.systemInstruction).toContain('EXACTLY 3');
+        });
+
+        it('returns empty lists when the model leaves the new fields out', async () => {
+            mockGenerateContent.mockResolvedValue({ text: JSON.stringify(base) });
+
+            const result = await summarizeConversation(mockApiKey, mockModel, 'Me: Hi');
+
+            expect(result.summary.targetExpressions).toEqual([]);
+            expect(result.summary.partnerChunks).toEqual([]);
         });
     });
 });
