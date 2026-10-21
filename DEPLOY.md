@@ -11,10 +11,11 @@
 - **純前端，無 Functions、無 D1、無 secrets。** 分析與計分由使用者自帶的 Gemini API key 在瀏覽器端直打 Google；key 只存在使用者瀏覽器 localStorage，沒有後端可打，流量成本恆為 $0、也沒有 blast radius。建置時 `vite.config.ts` 的 `process.env.*` define 在沒有 `GEMINI_API_KEY` 時為 undefined，屬預期（正式站不內嵌任何 key）。
 - **`base` 為 `/`。** 本站掛在自己的 subdomain root（`gab-guide.omnivorouscat.com`），資產從 `/assets/*` 載入。舊的 GitHub Pages 部署在子路徑 `/gab-guide/`，兩者的 base 不相容——GitHub Pages workflow 已停用（見 `.github/workflows/deploy.yml`），主力託管改到這裡。
 - **vite build 的 JS/CSS 帶 content-hash**，故快取單純：hashed bundle 長快取 immutable，其餘不帶 hash 的檔（entry HTML、favicon/logo、教學圖）走 no-cache（見 `public/_headers`）。
+- **AdSense 預設在建置期移除。** `index.html` 裡 AdSense 的 meta 與 script 包在 `<!-- ads:start -->` / `<!-- ads:end -->` 之間，`vite.config.ts` 的 `adsBuildFlag` plugin 在 `VITE_ADS` 不等於 `on` 時把整段拿掉（預設 off，正式站也 off）。原因：站上接了 YouGlish widget，其條款對商業用途需另取得許可。開不開廣告是整站層級的決定，不是使用者或單頁可以切的，所以用建置旗標而不是執行期 toggle，正式站的 HTML 裡就不會有任何 AdSense 程式碼。要重新開廣告：先停掉 YouGlish（或取得許可），再以 `VITE_ADS=on npm run build`（部署則 `VITE_ADS=on npm run deploy`）重 build。GA 不受此旗標影響。
 
 ## Google 分析 / 廣告
 
-- **AdSense**（`ca-pub-3282236858407428`）是帳號層級的公開識別碼，跨所有 domain 共用同一個 pub ID，內嵌在 `index.html`。`omnivorouscat.com` 是新 domain，需在 AdSense 後台 **Sites** 加入並通過審核，廣告才會實際投放（不會自動出現）。
+- **AdSense**（`ca-pub-3282236858407428`）是帳號層級的公開識別碼，跨所有 domain 共用同一個 pub ID，內嵌在 `index.html`（目前建置預設會移除，見上方「架構決定」）。`omnivorouscat.com` 是新 domain，需在 AdSense 後台 **Sites** 加入並通過審核，廣告才會實際投放（不會自動出現）。
 - **GA（已啟用，共用 property）**：`omnivorouscat.com` 這個 root domain 有一個 GA4 property，底下**只有一條 web data stream**（`G-DG4P6FWLZE`），供所有 `*.omnivorouscat.com` subdomain 共用——本站（`gab-guide.omnivorouscat.com`）就是其一。gtag 區塊已加進 `index.html`；**不要**為本 subdomain 另開 stream（同 root 的 subdomain GA4 原生支援，多開反而讓跨站 journey 破碎）。要分開看各站數據時，用報表的 `hostname` 維度切。
 
 ## 部署 / 上版
