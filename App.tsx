@@ -7,13 +7,17 @@ import { useSettings } from './features/shell/useSettings';
 import { ReviewPage } from './features/review/ReviewPage';
 import { PracticePage } from './features/practice/PracticePage';
 import { ProgressPage } from './features/progress/ProgressPage';
+import { BankProvider, useBankContext } from './features/bank/BankContext';
+import { CheckinProvider } from './features/progress/CheckinContext';
+import { selectDue } from './features/bank/model';
 
 /**
- * Composition root only: section routing, app-wide settings, and the dialogs that
- * belong to the whole app (Settings, Tutorial). Each section's own state and UI lives
- * in its feature folder; keep this file a thin shell (guarded by tests/fileBudget.test.ts).
+ * Composition root only: section routing, app-wide settings, the shared data
+ * providers (Expression Bank, check-ins) and the dialogs that belong to the whole app
+ * (Settings, Tutorial). Each section's own state and UI lives in its feature folder;
+ * keep this file a thin shell (guarded by tests/fileBudget.test.ts).
  */
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useHashRoute();
   const {
     settings,
@@ -27,11 +31,14 @@ const App: React.FC = () => {
     addCustomLanguage
   } = useSettings();
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const { expressions } = useBankContext();
+  const dueCount = selectDue(expressions, Date.now()).length;
 
   return (
     <AppShell
       activeTab={activeTab}
       onTabChange={setActiveTab}
+      badges={{ practice: dueCount }}
       onOpenTutorial={() => setIsTutorialOpen(true)}
       onOpenSettings={openSettings}
       panels={{
@@ -44,8 +51,8 @@ const App: React.FC = () => {
             onAddCustomLanguage={addCustomLanguage}
           />
         ),
-        practice: <PracticePage />,
-        progress: <ProgressPage />
+        practice: <PracticePage settings={settings} checkApiKey={checkApiKey} language={defaultLanguage} />,
+        progress: <ProgressPage settings={settings} checkApiKey={checkApiKey} language={defaultLanguage} />
       }}
     >
       {isSettingsOpen && (
@@ -75,5 +82,13 @@ const App: React.FC = () => {
     </AppShell>
   );
 };
+
+const App: React.FC = () => (
+  <BankProvider>
+    <CheckinProvider>
+      <AppContent />
+    </CheckinProvider>
+  </BankProvider>
+);
 
 export default App;
