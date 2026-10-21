@@ -11,7 +11,9 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "vite/client",
+      "vitest/globals"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,
