@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { GeminiModel, ColorByScoring } from '../types/index';
 import { ConfirmModal } from './ConfirmModal';
+import { geminiGuard } from '../services/callGuard';
+import { DataBackupSection } from '../features/progress/DataBackupSection';
 
 interface SettingsModalProps {
   currentKey: string;
@@ -49,6 +51,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [colorByScoring, setColorByScoring] = useState<ColorByScoring>(currentColorByScoring);
   const [customLanguages, setCustomLanguages] = useState<string[]>(currentCustomLanguages);
   const [showConversationScores, setShowConversationScores] = useState(currentShowConversationScores);
+
+  // Read once per opening; the dialog is short-lived, so it does not need to tick.
+  const [requestsToday] = useState(() => geminiGuard.todayCount());
 
   // Remove confirmation
   const [languageToRemove, setLanguageToRemove] = useState<string | null>(null);
@@ -164,6 +169,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
 
+          {/* Usage Today */}
+          <div className="space-y-1 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <span className="text-sm font-bold text-gray-700 block">Usage today</span>
+            <p className="text-sm text-gray-600">
+              <span className="text-2xl font-bold text-gray-800 tabular-nums mr-2" data-testid="usage-today-count">{requestsToday}</span>
+              requests sent with your key today
+            </p>
+          </div>
+
+          {/* Your Data */}
+          <DataBackupSection />
+
           {/* Privacy Notice */}
           <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 space-y-2">
             <div className="flex items-center text-amber-800 font-bold text-xs uppercase tracking-wider">
@@ -193,7 +210,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <ConfirmModal
           title="Remove Language"
           message={`Remove "${languageToRemove}" from your custom languages?`}
-          confirmText="Remove"
+          confirmLabel="Remove"
           onConfirm={() => handleRemoveLanguage(languageToRemove)}
           onCancel={() => setLanguageToRemove(null)}
         />
