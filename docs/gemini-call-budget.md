@@ -14,8 +14,8 @@ Rules for anyone adding a feature:
 
 | Area | User action | Calls | Function |
 |---|---|---|---|
-| Review | Click one of my messages (not yet analyzed) | 1 | `analyzeMessage` |
-| Review | Analyze All | 1 per 15 unanalyzed messages (batched) | `analyzeBatchMessages` |
+| Review | Click one of my messages (not yet analyzed) | 1 | `analyzeMessage` — also returns `concept` and `transferPrompt` for Save to Practice, no extra call |
+| Review | Analyze All | 1 per 15 unanalyzed messages (batched, paced 1.5 s apart, stops at the first failure) | `analyzeBatchMessages` |
 | Review | Summarize, or Export PDF without a summary | 1 (cached afterwards) | `summarizeConversation` — now also returns the 3 target expressions and partner chunks, no extra call |
 | Review | Match hidden targets after pasting a practice conversation back | 1 | `matchHiddenTargets` |
 | Review / Practice | Say it again (typed recall), per attempt | 1 | `gradeRecall` |

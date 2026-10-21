@@ -1,12 +1,25 @@
 
 import React from 'react';
-import { AnalysisResult, AnalysisState } from '../types/index';
+import { AnalysisResult, AnalysisState, GeminiModel } from '../types/index';
 import { parseExtensions } from '../utils/extensionsParser';
+import { AnalysisPractice } from '../features/review/AnalysisPractice';
 
 interface AnalysisDrawerProps {
   analysis: AnalysisResult | null;
   state: AnalysisState;
   onClose: () => void;
+  /**
+   * Save/recall block under "Better Alternative". Shown only when this is passed and the
+   * analysis has a concept (older saved analyses do not). Needs a BankProvider above.
+   */
+  practice?: {
+    /** The learner's sentence the improvement replaces. */
+    original?: string;
+    conversationId?: string;
+    language: string;
+    apiKey: string;
+    model: GeminiModel;
+  };
 }
 
 const ScoreBadge: React.FC<{ score: number; label: string }> = ({ score, label }) => {
@@ -24,7 +37,7 @@ const ScoreBadge: React.FC<{ score: number; label: string }> = ({ score, label }
   );
 };
 
-export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ analysis, state, onClose }) => {
+export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ analysis, state, onClose, practice }) => {
   if (state === AnalysisState.IDLE) return null;
 
   return (
@@ -100,6 +113,17 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ analysis, state,
                 "{analysis.improvement}"
               </div>
             </section>
+
+            {practice && analysis.concept && (
+              <AnalysisPractice
+                analysis={{ ...analysis, concept: analysis.concept }}
+                original={practice.original}
+                conversationId={practice.conversationId}
+                language={practice.language}
+                apiKey={practice.apiKey}
+                model={practice.model}
+              />
+            )}
 
             <section>
               <h4 className="font-semibold text-gray-700 mb-2 flex items-center">

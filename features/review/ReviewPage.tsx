@@ -10,6 +10,9 @@ import { parseConversationText } from '../../utils/conversationParser';
 import { HistorySidebar } from './HistorySidebar';
 import { ReviewToolbar } from './ReviewToolbar';
 import { buildReportHtml, buildTxtExport } from './reviewExport';
+import { HiddenTargetsPanel } from './HiddenTargetsPanel';
+import { PendingTargets, readPendingTargets } from './pendingTargets';
+import { useBankContext } from '../bank/BankContext';
 
 /**
  * Review section: paste a transcript, browse saved conversations, analyze messages,
@@ -66,10 +69,17 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
   // Language state
   const [saveToCustom, setSaveToCustom] = useState(false);
 
+  // Practice targets that went out with the last ChatGPT prompt, bound to the conversation loaded next
+  const [targetCheck, setTargetCheck] = useState<{ conversationId: string; pending: PendingTargets } | null>(null);
+  const closeTargetCheck = useCallback(() => setTargetCheck(null), []);
+  const { expressions: bankExpressions } = useBankContext();
+
   // Derived state
   const activeConversation = conversations.find(c => c.id === currentConvId);
   const messages = activeConversation?.messages || [];
   const summary = activeConversation?.summary || null;
+  const conversationLanguage = activeConversation?.language || 'English';
+  const selectedMessage = messages.find(m => m.id === selectedMsgId);
 
   // Auto-sync to localStorage
   useEffect(() => {
@@ -107,8 +117,10 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
     const parsed = parseConversationText(inputText);
     if (parsed.length === 0) return;
 
+    let loadedConvId = currentConvId;
     if (!currentConvId) {
       const newId = `conv-${Date.now()}`;
+      loadedConvId = newId;
       const newConv: Conversation = {
         id: newId,
         title: 'Imported Chat',
@@ -123,6 +135,10 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
     } else {
       updateActiveConversation({ messages: [...messages, ...parsed] });
     }
+
+    // A fresh transcript right after a practice prompt: offer to check its practice targets
+    const pending = messages.length === 0 && loadedConvId ? readPendingTargets() : null;
+    if (pending && loadedConvId) setTargetCheck({ conversationId: loadedConvId, pending });
 
     // Save to custom languages if checkbox checked
     if (saveToCustom && defaultLanguage.trim()) {
@@ -250,7 +266,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
     try {
       // Filter excluded messages
       const includedMessages = messages.filter(m => !m.excluded);
-      const conversationText = includedMessages.map(m => `${m.sender}: ${m.text}`).join('\n');
+      const conversationText = includedMessages.map(m => `${m.role === 'user' ? 'Learner' : 'Partner'}: ${m.text}`).join('\n');
       const { summary: resSummary, title: resTitle } = await summarizeConversation(settings.apiKey, settings.model, conversationText, activeConversation?.language || 'English');
       updateActiveConversation({ summary: resSummary, title: resTitle });
       setShowSummary(true);
@@ -313,6 +329,14 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
     setCurrentConvId(null);
     localStorage.removeItem(STORAGE_KEY_CONVS);
     setShowResetConfirm(false);
+  };
+
+  const drawerPractice = {
+    original: selectedMessage?.text,
+    conversationId: activeConversation?.id,
+    language: conversationLanguage,
+    apiKey: settings.apiKey,
+    model: settings.model,
   };
 
   return (
@@ -431,6 +455,18 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
                     className="text-xl font-bold text-gray-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-100 rounded px-2 -ml-2"
                   />
                 </div>
+                {targetCheck && targetCheck.conversationId === activeConversation.id && (
+                  <HiddenTargetsPanel
+                    pending={targetCheck.pending}
+                    conversationId={activeConversation.id}
+                    messages={messages}
+                    language={targetCheck.pending.language || conversationLanguage}
+                    apiKey={settings.apiKey}
+                    model={settings.model}
+                    checkApiKey={checkApiKey}
+                    onClose={closeTargetCheck}
+                  />
+                )}
                 {messages.map((msg) => (
                   <ChatBubble
                     key={msg.id}
@@ -459,6 +495,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
             state={analysisState}
             analysis={analysis}
             onClose={() => { setAnalysisState(AnalysisState.IDLE); setSelectedMsgId(null); }}
+            practice={drawerPractice}
           />
         </aside>
 
@@ -468,13 +505,19 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
               state={analysisState}
               analysis={analysis}
               onClose={() => { setAnalysisState(AnalysisState.IDLE); setSelectedMsgId(null); }}
+              practice={drawerPractice}
             />
           </div>
         )}
       </main>
 
       {showSummary && (
-        <SummaryModal summary={summary} onClose={() => setShowSummary(false)} />
+        <SummaryModal
+          summary={summary}
+          onClose={() => setShowSummary(false)}
+          conversationId={activeConversation?.id}
+          language={conversationLanguage}
+        />
       )}
 
       {isTopicOpen && (
@@ -485,6 +528,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
           model={settings.model}
           customLanguages={settings.customLanguages}
           onAddCustomLanguage={onAddCustomLanguage}
+          hiddenTargets={bankExpressions}
         />
       )}
 

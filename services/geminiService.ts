@@ -18,6 +18,27 @@ export const buildContext = (messages: Message[], upToIndex: number): string => 
     .join('\n');
 };
 
+/**
+ * Shared by analyzeMessage and analyzeBatchMessages: two extra fields on the same call
+ * (no extra request) that let the learner save the improvement and practise it.
+ * When the sentence needs no change the model returns empty strings and the UI hides
+ * the save/recall controls.
+ */
+const LEARNING_FIELDS_INSTRUCTION = `- concept: One line in plain words describing the idea the improvement expresses, so the learner could recall it without seeing it. Do not repeat or quote the improvement's wording. Empty string if isNatural is true.
+- transferPrompt: A short task set in a DIFFERENT situation from this conversation that asks the learner to express the same concept about something else (for example "Tell a coworker about a movie that let you down."). It must not contain any words from the improvement. Empty string if isNatural is true.`;
+
+/** Trim concept/transferPrompt and drop them when empty, so old and new analyses look alike to the UI. */
+export function withLearningFields(analysis: AnalysisResult): AnalysisResult {
+  const out: AnalysisResult = { ...analysis };
+  delete out.concept;
+  delete out.transferPrompt;
+  const concept = cleanString(analysis.concept);
+  const transferPrompt = cleanString(analysis.transferPrompt);
+  if (concept) out.concept = concept;
+  if (transferPrompt) out.transferPrompt = transferPrompt;
+  return out;
+}
+
 export const analyzeMessage = async (apiKey: string, model: GeminiModel, message: string, context: string, language: string = 'English'): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey });
 
@@ -75,7 +96,8 @@ JSON Output Format:
 - naturalnessScore: Score using the rubric above (1-10)
 - improvement: Provide a more native-like, idiomatic alternative in ${language}
 - extensions: Suggest 2-3 specific follow-up options the LEARNER could say next
-- isNatural: true if no changes needed, false otherwise`,
+- isNatural: true if no changes needed, false otherwise
+${LEARNING_FIELDS_INSTRUCTION}`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -87,13 +109,15 @@ JSON Output Format:
           improvement: { type: Type.STRING },
           extensions: { type: Type.STRING },
           isNatural: { type: Type.BOOLEAN },
+          concept: { type: Type.STRING },
+          transferPrompt: { type: Type.STRING },
         },
-        required: ["grammarErrors", "grammarScore", "naturalnessRating", "naturalnessScore", "improvement", "extensions", "isNatural"]
+        required: ["grammarErrors", "grammarScore", "naturalnessRating", "naturalnessScore", "improvement", "extensions", "isNatural", "concept", "transferPrompt"]
       },
     },
   }));
 
-  return extractJson(response.text) as AnalysisResult;
+  return withLearningFields(extractJson(response.text) as AnalysisResult);
 };
 
 interface BatchAnalysisItem {
@@ -188,7 +212,8 @@ JSON Output Format (Array of Objects):
 - naturalnessScore: Score using the rubric above (1-10)
 - improvement: Provide a more native-like, idiomatic alternative in ${language}
 - extensions: Suggest 2-3 specific follow-up options the LEARNER could say next
-- isNatural: true if no changes needed, false otherwise`,
+- isNatural: true if no changes needed, false otherwise
+${LEARNING_FIELDS_INSTRUCTION}`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -203,8 +228,10 @@ JSON Output Format (Array of Objects):
               improvement: { type: Type.STRING },
               extensions: { type: Type.STRING },
               isNatural: { type: Type.BOOLEAN },
+              concept: { type: Type.STRING },
+              transferPrompt: { type: Type.STRING },
             },
-            required: ["id", "grammarErrors", "grammarScore", "naturalnessRating", "naturalnessScore", "improvement", "extensions", "isNatural"]
+            required: ["id", "grammarErrors", "grammarScore", "naturalnessRating", "naturalnessScore", "improvement", "extensions", "isNatural", "concept", "transferPrompt"]
           }
         },
       },
@@ -217,7 +244,7 @@ JSON Output Format (Array of Objects):
       .filter(item => item && typeof item === 'object' && sentIds.has(item.id))
       .map(item => ({
         messageId: item.id,
-        analysis: {
+        analysis: withLearningFields({
           grammarErrors: item.grammarErrors,
           grammarScore: item.grammarScore,
           naturalnessRating: item.naturalnessRating,
@@ -225,7 +252,9 @@ JSON Output Format (Array of Objects):
           improvement: item.improvement,
           extensions: item.extensions,
           isNatural: item.isNatural,
-        }
+          concept: item.concept,
+          transferPrompt: item.transferPrompt,
+        })
       })));
   }
 
@@ -239,7 +268,7 @@ export const summarizeConversation = async (apiKey: string, model: GeminiModel, 
     contents: `Summarize the overall ${language} performance, provide advanced vocabulary, pick the target expressions and partner chunks, and create a 3-5 word title for this conversation:\n\n${conversationText}`,
     config: {
       systemInstruction: `You are a professional linguist and ${language} coach. 
-      Evaluate ONLY the learner's performance in ${language}. The conversation partner (usually ChatGPT or a native speaker) is not evaluated.
+      Evaluate ONLY the learner's performance in ${language}. Lines are labelled Learner and Partner; evaluate only Learner lines. The Partner is not evaluated.
       Focus exclusively on analyzing the learner's grammar, clarity, and conversation flow.
       The partner's messages are used for one thing only: partnerChunks (see below).
 

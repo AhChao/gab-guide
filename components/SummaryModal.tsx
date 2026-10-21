@@ -2,10 +2,15 @@
 import React from 'react';
 import { ConversationSummary } from '../types/index';
 import { getScoreColorClass } from '../utils/scoreUtils';
+import { SummaryPracticeTargets } from '../features/review/SummaryPracticeTargets';
 
 interface SummaryModalProps {
   summary: ConversationSummary | null;
   onClose: () => void;
+  /** Saved with each expression so the bank can point back to this conversation. */
+  conversationId?: string;
+  /** Language the expressions are saved under. Defaults to English like the rest of Review. */
+  language?: string;
 }
 
 const ScorePill: React.FC<{ score: number; label: string }> = ({ score, label }) => {
@@ -17,7 +22,7 @@ const ScorePill: React.FC<{ score: number; label: string }> = ({ score, label })
   );
 };
 
-export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose }) => {
+export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose, conversationId, language = 'English' }) => {
   if (!summary) return null;
 
   return (
@@ -60,6 +65,13 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose }) 
               <p className="text-gray-700 leading-relaxed text-sm">{summary.flowAnalysis}</p>
             </div>
           </section>
+
+          <SummaryPracticeTargets
+            targetExpressions={summary.targetExpressions}
+            partnerChunks={summary.partnerChunks}
+            conversationId={conversationId}
+            language={language}
+          />
 
           {/* Key Strategic Tips */}
           <section className="space-y-4 pt-6 border-t border-gray-100">

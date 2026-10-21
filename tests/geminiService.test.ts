@@ -415,4 +415,83 @@ describe('geminiService', () => {
             expect(result.summary.partnerChunks).toEqual([]);
         });
     });
+
+    describe('concept and transferPrompt on per-message analysis', () => {
+        const base = {
+            grammarErrors: 'Minor.',
+            grammarScore: 7,
+            naturalnessRating: 'OK.',
+            naturalnessScore: 6,
+            improvement: "It wasn't quite what I had in mind.",
+            extensions: 'Ask about theirs.',
+            isNatural: false,
+        };
+
+        it('analyzeMessage asks for both fields in the same call and returns them trimmed', async () => {
+            mockGenerateContent.mockResolvedValue({
+                text: JSON.stringify({ ...base, concept: '  something fell short of expectations ', transferPrompt: ' Tell a friend about a hotel that let you down. ' }),
+            });
+
+            const result = await analyzeMessage(mockApiKey, mockModel, 'It was not my image.', 'User: It was not my image.');
+
+            expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+            expect(result.concept).toBe('something fell short of expectations');
+            expect(result.transferPrompt).toBe('Tell a friend about a hotel that let you down.');
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.responseSchema.properties).toHaveProperty('concept');
+            expect(callArgs.config.responseSchema.properties).toHaveProperty('transferPrompt');
+            expect(callArgs.config.systemInstruction).toContain('transferPrompt');
+        });
+
+        it('analyzeMessage leaves the fields out when the model returns them empty', async () => {
+            mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ ...base, isNatural: true, concept: '', transferPrompt: '' }) });
+
+            const result = await analyzeMessage(mockApiKey, mockModel, 'Fine.', 'User: Fine.');
+
+            expect(result).not.toHaveProperty('concept');
+            expect(result).not.toHaveProperty('transferPrompt');
+        });
+
+        it('analyzeBatchMessages passes both fields through per message', async () => {
+            mockGenerateContent.mockResolvedValue({
+                text: JSON.stringify([
+                    { id: 'msg-1', ...base, concept: 'a letdown', transferPrompt: 'Describe a concert that disappointed you.' },
+                    { id: 'msg-2', ...base, isNatural: true, concept: '', transferPrompt: '' },
+                ]),
+            });
+            const allMessages: Message[] = [
+                { id: 'msg-1', sender: 'User', text: 'Hello', role: 'user', timestamp: '10:00' },
+                { id: 'msg-2', sender: 'User', text: 'World', role: 'user', timestamp: '10:01' },
+            ];
+
+            const result = await analyzeBatchMessages(mockApiKey, mockModel, allMessages, [
+                { id: 'msg-1', text: 'Hello', index: 0 },
+                { id: 'msg-2', text: 'World', index: 1 },
+            ]);
+
+            expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+            expect(result[0].analysis.concept).toBe('a letdown');
+            expect(result[0].analysis.transferPrompt).toBe('Describe a concert that disappointed you.');
+            expect(result[1].analysis).not.toHaveProperty('concept');
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.responseSchema.items.properties).toHaveProperty('concept');
+            expect(callArgs.config.responseSchema.items.properties).toHaveProperty('transferPrompt');
+        });
+    });
+
+    describe('summarizeConversation speaker labels', () => {
+        it('tells the model to evaluate only Learner lines', async () => {
+            mockGenerateContent.mockResolvedValue({
+                text: JSON.stringify({
+                    title: 'Trip talk', grammarPerformance: 'g', grammarScore: 7, clarityEvaluation: 'c', clarityScore: 7,
+                    flowAnalysis: 'f', flowScore: 7, keySuggestions: [], suggestedVocabulary: [],
+                }),
+            });
+
+            await summarizeConversation(mockApiKey, mockModel, 'Partner: How was it?\nLearner: It was fine.');
+
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.systemInstruction).toContain('Lines are labelled Learner and Partner; evaluate only Learner lines');
+        });
+    });
 });

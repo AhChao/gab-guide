@@ -18,6 +18,10 @@ export interface AnalysisResult {
     improvement: string;
     extensions: string;
     isNatural: boolean;
+    /** One line: the idea `improvement` expresses, without its wording. Absent on analyses saved before this field existed, and when the sentence needed no change. */
+    concept?: string;
+    /** A different situation in which to express the same concept. Absent on older analyses. */
+    transferPrompt?: string;
 }
 
 export interface VocabularySuggestion {

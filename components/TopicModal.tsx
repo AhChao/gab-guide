@@ -4,6 +4,8 @@ import { getRandomTopic, getLevelLabel, TopicLevel } from '../data/smallTalkTopi
 import { CheatSheetContent, GeminiModel } from '../types/index';
 import { generateCheatSheet } from '../services/geminiService';
 import { CheatSheetModal } from './CheatSheetModal';
+import { Expression, buildHiddenTargetsBlock, selectHiddenTargets } from '../features/bank/model';
+import { writePendingTargets } from '../features/review/pendingTargets';
 
 interface TopicModalProps {
     onClose: () => void;
@@ -12,6 +14,12 @@ interface TopicModalProps {
     model?: GeminiModel;
     customLanguages?: string[];
     onAddCustomLanguage?: (lang: string) => void;
+    /**
+     * Bank expressions that may ride along as practice targets. Filtered here to the
+     * selected practice language and capped by selectHiddenTargets, because the language
+     * can change inside this modal.
+     */
+    hiddenTargets?: Expression[];
 }
 
 const LEVELS: TopicLevel[] = ['A', 'B', 'C'];
@@ -66,7 +74,7 @@ const STAR_SIGNS = [
     { id: 'Pisces', label: 'Pisces ♓' },
 ];
 
-export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language, apiKey, model, customLanguages, onAddCustomLanguage }) => {
+export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language, apiKey, model, customLanguages, onAddCustomLanguage, hiddenTargets }) => {
     const [currentTopic, setCurrentTopic] = useState<string | null>(null);
     const [currentLevel, setCurrentLevel] = useState<TopicLevel | null>(null);
 
@@ -82,6 +90,12 @@ export const TopicModal: React.FC<TopicModalProps> = ({ onClose, language, apiKe
     const [mbtiType, setMbtiType] = useState('ENFP');
     const [useStarSign, setUseStarSign] = useState(false);
     const [starSign, setStarSign] = useState('Leo');
+
+    // Practice targets from the Expression Bank (folded into the prompt; the partner never reveals them)
+    const [includeTargets, setIncludeTargets] = useState(true);
+    const practiceLanguage = selectedLanguage || 'English';
+    const targets = selectHiddenTargets((hiddenTargets ?? []).filter(e => e.language === practiceLanguage), Date.now());
+    const useTargets = includeTargets && targets.length > 0;
 
     // Cheat sheet states
     const [showContextInput, setShowContextInput] = useState(false);
@@ -194,7 +208,7 @@ Language Level: Advanced (can use A-C range)
 ${levelGuidance}
 Style: ${stylePrompt}${personalityPrompt}
 
-When I say "let's start", ask me this question in a casual, friendly way in ${selectedLanguage || 'English'}. Keep the conversation natural and interactive. Adjust your language complexity to match the difficulty level above.`;
+When I say "let's start", ask me this question in a casual, friendly way in ${selectedLanguage || 'English'}. Keep the conversation natural and interactive. Adjust your language complexity to match the difficulty level above.${useTargets ? buildHiddenTargetsBlock(targets) : ''}`;
     };
 
     return (
@@ -378,6 +392,18 @@ When I say "let's start", ask me this question in a casual, friendly way in ${se
                                 </div>
                             </div>
 
+                            {targets.length > 0 && (
+                                <label className="flex items-center gap-2 cursor-pointer p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                                    <input
+                                        type="checkbox"
+                                        checked={includeTargets}
+                                        onChange={(e) => setIncludeTargets(e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Include today's practice targets ({targets.length})</span>
+                                </label>
+                            )}
+
                             {/* ChatGPT Button */}
                             <div className="flex gap-2">
                                 <a
@@ -389,6 +415,10 @@ When I say "let's start", ask me this question in a casual, friendly way in ${se
                                         if (saveToCustom && selectedLanguage.trim() && onAddCustomLanguage) {
                                             onAddCustomLanguage(selectedLanguage.trim());
                                             setSaveToCustom(false);
+                                        }
+                                        // Remember which targets went out so Review can check them after the transcript comes back
+                                        if (useTargets) {
+                                            writePendingTargets({ ids: targets.map(t => t.id), language: practiceLanguage, createdAt: Date.now() });
                                         }
                                     }}
                                     className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md active:scale-95"
