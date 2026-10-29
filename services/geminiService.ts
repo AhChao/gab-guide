@@ -4,6 +4,7 @@ import { AnalysisResult, CheatSheetContent, ConversationSummary, GeminiModel, Ge
 import { TopicLevel } from "../data/smallTalkTopics";
 import { geminiGuard, MIN_INTERVAL_MS } from "./callGuard";
 import { cleanString, extractJson, GeminiResponseError } from "./practiceService";
+import { SPOKEN_TRANSCRIPT_NOTE } from "./promptNotes";
 
 export const MAX_TARGET_EXPRESSIONS = 3;
 export const MAX_PARTNER_CHUNKS = 3;
@@ -97,7 +98,9 @@ JSON Output Format:
 - improvement: Provide a more native-like, idiomatic alternative in ${language}
 - extensions: Suggest 2-3 specific follow-up options the LEARNER could say next
 - isNatural: true if no changes needed, false otherwise
-${LEARNING_FIELDS_INSTRUCTION}`,
+${LEARNING_FIELDS_INSTRUCTION}
+
+${SPOKEN_TRANSCRIPT_NOTE}`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -213,7 +216,9 @@ JSON Output Format (Array of Objects):
 - improvement: Provide a more native-like, idiomatic alternative in ${language}
 - extensions: Suggest 2-3 specific follow-up options the LEARNER could say next
 - isNatural: true if no changes needed, false otherwise
-${LEARNING_FIELDS_INSTRUCTION}`,
+${LEARNING_FIELDS_INSTRUCTION}
+
+${SPOKEN_TRANSCRIPT_NOTE}`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -306,7 +311,7 @@ export const summarizeConversation = async (apiKey: string, model: GeminiModelId
       - title: A short string title.
       - grammarPerformance: Overall grammar summary of the LEARNER's messages only.
       - grammarScore: A score from 1 (poor) to 10 (perfect) for the LEARNER.
-      - clarityEvaluation: Clarity analysis of the LEARNER's expression.
+      - clarityEvaluation: Clarity analysis of the LEARNER's expression. Judge clarity on what the learner evidently meant; speech-recognition artefacts in the transcript are not the learner's word choice and are excluded from clarity.
       - clarityScore: A score from 1 (unclear) to 10 (crystal clear) for the LEARNER.
       - flowAnalysis: Flow analysis of how well the LEARNER maintained conversation momentum.
       - flowScore: A score from 1 (choppy/disconnected) to 10 (smooth/natural) for the LEARNER.
@@ -322,7 +327,9 @@ export const summarizeConversation = async (apiKey: string, model: GeminiModelId
       - partnerChunks: Up to 3 items taken from the PARTNER's messages (never the learner's): natural native-speaker chunks a learner would want to save and reuse. Skip generic filler. Each item:
         - phrase: The chunk as the partner said it (may be trimmed to the reusable part).
         - concept: One line describing what it conveys.
-        - example: Another natural example sentence using it.`,
+        - example: Another natural example sentence using it.
+
+${SPOKEN_TRANSCRIPT_NOTE}`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,

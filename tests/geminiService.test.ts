@@ -24,7 +24,8 @@ vi.mock('@google/genai', () => {
 });
 
 // Import after mocking
-import { analyzeMessage, analyzeBatchMessages, summarizeConversation, buildContext, MAX_CONTEXT_MESSAGES } from '../services/geminiService';
+import { analyzeMessage, analyzeBatchMessages, summarizeConversation, generateCheatSheet, buildContext, MAX_CONTEXT_MESSAGES } from '../services/geminiService';
+import { SPOKEN_TRANSCRIPT_NOTE } from '../services/promptNotes';
 import { geminiGuard, GeminiCallError } from '../services/callGuard';
 
 const mockApiKey = 'test-api-key';
@@ -492,6 +493,59 @@ describe('geminiService', () => {
 
             const callArgs = mockGenerateContent.mock.calls[0][0];
             expect(callArgs.config.systemInstruction).toContain('Lines are labelled Learner and Partner; evaluate only Learner lines');
+        });
+    });
+
+    describe('speech-recognition transcript note', () => {
+        const analysis = {
+            grammarErrors: 'None.', grammarScore: 8, naturalnessRating: 'Good.', naturalnessScore: 8,
+            improvement: 'Fine.', extensions: 'Go on.', isNatural: true, concept: '', transferPrompt: '',
+        };
+
+        it('analyzeMessage appends the note to its systemInstruction', async () => {
+            mockGenerateContent.mockResolvedValue({ text: JSON.stringify(analysis) });
+
+            await analyzeMessage(mockApiKey, mockModel, 'It is a hot asana to to the sex.', 'User: It is a hot asana to to the sex.');
+
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.systemInstruction).toContain(SPOKEN_TRANSCRIPT_NOTE);
+            expect(callArgs.config.systemInstruction).toContain('SCORING RUBRIC');
+        });
+
+        it('analyzeBatchMessages appends the note to its systemInstruction', async () => {
+            mockGenerateContent.mockResolvedValue({ text: JSON.stringify([{ id: 'msg-1', ...analysis }]) });
+            const allMessages: Message[] = [
+                { id: 'msg-1', sender: 'User', text: 'Hello', role: 'user', timestamp: '10:00' },
+            ];
+
+            await analyzeBatchMessages(mockApiKey, mockModel, allMessages, [{ id: 'msg-1', text: 'Hello', index: 0 }]);
+
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.systemInstruction).toContain(SPOKEN_TRANSCRIPT_NOTE);
+        });
+
+        it('summarizeConversation appends the note and excludes recognition artefacts from clarity', async () => {
+            mockGenerateContent.mockResolvedValue({
+                text: JSON.stringify({
+                    title: 'Yoga talk', grammarPerformance: 'g', grammarScore: 7, clarityEvaluation: 'c', clarityScore: 7,
+                    flowAnalysis: 'f', flowScore: 7, keySuggestions: [], suggestedVocabulary: [],
+                }),
+            });
+
+            await summarizeConversation(mockApiKey, mockModel, 'Partner: How is yoga?\nLearner: It is a hot asana to to the sex.');
+
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.systemInstruction).toContain(SPOKEN_TRANSCRIPT_NOTE);
+            expect(callArgs.config.systemInstruction).toContain('Judge clarity on what the learner evidently meant');
+        });
+
+        it('generateCheatSheet does not include the note', async () => {
+            mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ vocabulary: [], sentences: [] }) });
+
+            await generateCheatSheet(mockApiKey, mockModel, 'Weekend plans', 'B', 'English', '');
+
+            const callArgs = mockGenerateContent.mock.calls[0][0];
+            expect(callArgs.config.systemInstruction).not.toContain(SPOKEN_TRANSCRIPT_NOTE);
         });
     });
 });
