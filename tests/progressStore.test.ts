@@ -56,3 +56,21 @@ describe('check-in store', () => {
         expect('id' in list[0]).toBe(false);
     });
 });
+
+describe('check-in feedback', () => {
+    it('setFeedback attaches the summary to the saved check-in and keeps everything else', async () => {
+        const store = makeStore();
+        const c = await store.save({ language: 'English', messages: [msg('user', 'I went hiking.', 0)] }, 1000);
+        const feedback = {
+            grammarPerformance: 'ok', grammarScore: 6, clarityEvaluation: 'ok', clarityScore: 6,
+            flowAnalysis: 'ok', flowScore: 6, keySuggestions: ['tense'], suggestedVocabulary: [],
+            targetExpressions: [], partnerChunks: [],
+        };
+        const updated = await store.setFeedback(c.id, feedback);
+        expect(updated.feedback).toEqual(feedback);
+        expect(updated.metrics).toEqual(c.metrics);
+        const [listed] = await store.list();
+        expect(listed.feedback?.grammarScore).toBe(6);
+        await expect(store.setFeedback('nope', feedback)).rejects.toThrow(/not found/);
+    });
+});

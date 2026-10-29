@@ -14,7 +14,7 @@
  * - `putRaw*` / `clear` exist only for features/bank/backup.ts.
  */
 
-import { Message } from '../../types/index';
+import { ConversationSummary, Message } from '../../types/index';
 import { computeTextMetrics } from '../../utils/textMetrics';
 import { KeyValueAdapter, createIdbAdapter } from '../bank/idb';
 import { newId } from '../bank/store';
@@ -33,6 +33,8 @@ export interface CheckinStore {
     list(): Promise<CheckIn[]>;
     save(input: SaveCheckinInput, now?: number): Promise<CheckIn>;
     remove(id: string): Promise<void>;
+    /** Attach the coach feedback to a saved check-in; returns the updated record. Throws when the id is unknown. */
+    setFeedback(id: string, feedback: ConversationSummary): Promise<CheckIn>;
     /** Newest first. */
     listComparisons(): Promise<CheckInComparison[]>;
     saveComparison(c: CheckInComparison): Promise<void>;
@@ -72,6 +74,13 @@ export function createCheckinStore(
             return checkin;
         },
         remove: id => checkins.delete(id),
+        setFeedback: async (id, feedback) => {
+            const existing = await checkins.get(id);
+            if (!existing) throw new Error(`Check-in ${id} not found.`);
+            const updated: CheckIn = { ...existing, feedback };
+            await checkins.put(updated);
+            return updated;
+        },
         listComparisons: async () => (await comparisons.getAll()).map(fromStored).sort((a, b) => b.at - a.at),
         saveComparison: c => comparisons.put(toStored(c)),
         putRaw: items => checkins.putMany(items),
@@ -92,6 +101,7 @@ export const checkinStore: CheckinStore = {
     list: () => lazyDefault().list(),
     save: (input, now) => lazyDefault().save(input, now),
     remove: id => lazyDefault().remove(id),
+    setFeedback: (id, feedback) => lazyDefault().setFeedback(id, feedback),
     listComparisons: () => lazyDefault().listComparisons(),
     saveComparison: c => lazyDefault().saveComparison(c),
     putRaw: items => lazyDefault().putRaw(items),

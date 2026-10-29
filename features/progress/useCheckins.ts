@@ -17,6 +17,7 @@ export interface UseCheckinsResult {
     error: string | null;
     save: CheckinStore['save'];
     remove: CheckinStore['remove'];
+    setFeedback: CheckinStore['setFeedback'];
     saveComparison: CheckinStore['saveComparison'];
     refresh(): Promise<void>;
 }
@@ -75,7 +76,8 @@ export function useCheckins(store: CheckinStore = checkinStore): UseCheckinsResu
 
     const save = useCallback<CheckinStore['save']>((input, now) => write(store.save)(input, now), [store, write]);
     const remove = useCallback<CheckinStore['remove']>(id => write(store.remove)(id), [store, write]);
+    const setFeedback = useCallback<CheckinStore['setFeedback']>((id, f) => write(store.setFeedback)(id, f), [store, write]);
     const saveComparison = useCallback<CheckinStore['saveComparison']>(c => write(store.saveComparison)(c), [store, write]);
 
-    return { checkins, comparisons, loading, error, save, remove, saveComparison, refresh };
+    return { checkins, comparisons, loading, error, save, remove, setFeedback, saveComparison, refresh };
 }

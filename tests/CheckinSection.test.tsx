@@ -1,10 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { CheckinProvider } from '../features/progress/CheckinContext';
 import { CheckinSection } from '../features/progress/CheckinSection';
 import { createCheckinStore, StoredComparison } from '../features/progress/store';
 import { createMemoryAdapter } from '../features/bank/idb';
 import { CheckIn } from '../features/progress/model';
+import { DEFAULT_SETTINGS } from '../features/shell/useSettings';
+
+// Rows carry the feedback action; no test here may reach the real Gemini API.
+vi.mock('../services/geminiService', () => ({
+    summarizeConversation: vi.fn(),
+}));
 
 // jsdom 13 has no MutationObserver, so waitFor is unavailable; flush one macrotask instead.
 const settle = () => act(async () => { await new Promise(r => setTimeout(r, 0)); });
@@ -13,7 +19,7 @@ const renderSection = () => {
     const store = createCheckinStore(createMemoryAdapter<CheckIn>(), createMemoryAdapter<StoredComparison>());
     render(
         <CheckinProvider store={store}>
-            <CheckinSection language="English" />
+            <CheckinSection language="English" settings={{ ...DEFAULT_SETTINGS, apiKey: 'test-key' }} checkApiKey={() => true} />
         </CheckinProvider>
     );
     return store;
@@ -44,6 +50,7 @@ describe('CheckinSection', () => {
         expect(rows).toHaveLength(1);
         expect(screen.getByTestId('checkin-words')).toHaveTextContent('5');
         expect(rows[0]).toHaveTextContent('Felt slow');
+        expect(screen.getByRole('button', { name: 'Get feedback' })).toBeEnabled();
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
         const saved = await store.list();

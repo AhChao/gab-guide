@@ -15,7 +15,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = ({ settings, checkApiKe
   <section className="flex-1 overflow-y-auto p-4 md:p-8">
     <div className="max-w-4xl mx-auto space-y-10">
       <h2 className="text-xl font-bold text-gray-800">Progress</h2>
-      <CheckinSection language={language} />
+      <CheckinSection language={language} settings={settings} checkApiKey={checkApiKey} />
       <div className="pt-8 border-t border-gray-100">
         <CompareSection settings={settings} checkApiKey={checkApiKey} />
       </div>

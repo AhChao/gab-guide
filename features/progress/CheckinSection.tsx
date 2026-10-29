@@ -5,9 +5,13 @@ import { CheckinModal } from './CheckinModal';
 import { ListStateFrame } from './ListStateFrame';
 import { formatDate, VAGUE_WORDS_HINT } from './format';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { CheckinFeedback } from './CheckinFeedback';
+import { AppSettings } from '../../types/index';
 
 interface CheckinSectionProps {
   language: string;
+  settings: AppSettings;
+  checkApiKey: () => boolean;
 }
 
 const NOTE_PREVIEW_CHARS = 60;
@@ -18,7 +22,7 @@ const notePreview = (note?: string): string => {
 };
 
 /** Saved check-ins: start a new one, and the list of past ones with their numbers. */
-export const CheckinSection: React.FC<CheckinSectionProps> = ({ language }) => {
+export const CheckinSection: React.FC<CheckinSectionProps> = ({ language, settings, checkApiKey }) => {
   const { checkins, loading, error, save, remove, refresh } = useCheckinContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toDelete, setToDelete] = useState<CheckIn | null>(null);
@@ -52,7 +56,7 @@ export const CheckinSection: React.FC<CheckinSectionProps> = ({ language }) => {
         <div className="space-y-1">
           <h3 id="checkins-heading" className="text-lg font-bold text-gray-800">Check-ins</h3>
           <p className="text-sm text-gray-500 max-w-xl">
-            A check-in is the same set of questions in ChatGPT every 2 to 4 weeks, pasted back here so later ones can be compared with earlier ones.
+            A check-in is the same set of questions in ChatGPT every 2 to 4 weeks, pasted back here so later ones can be compared with earlier ones. Each check-in can also get the same feedback as a Review conversation.
           </p>
         </div>
         {checkins.length > 0 && startButton}
@@ -89,12 +93,15 @@ export const CheckinSection: React.FC<CheckinSectionProps> = ({ language }) => {
                   <td className="px-4 py-3 text-right tabular-nums">{c.metrics.meanTurnLength.toFixed(1)}</td>
                   <td className="px-4 py-3 text-gray-500 max-w-[16rem]" title={c.note}>{notePreview(c.note)}</td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setToDelete(c)}
-                      className="text-xs font-semibold text-gray-400 hover:text-red-600 transition-colors"
-                    >
-                      Delete
-                    </button>
+                    <span className="inline-flex items-center justify-end gap-3">
+                      <CheckinFeedback checkin={c} settings={settings} checkApiKey={checkApiKey} />
+                      <button
+                        onClick={() => setToDelete(c)}
+                        className="text-xs font-semibold text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </span>
                   </td>
                 </tr>
               ))}

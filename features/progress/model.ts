@@ -12,7 +12,7 @@
  * utils/textMetrics.ts sit beside it as the non-model anchor.
  */
 
-import { GeminiModel, Message } from '../../types/index';
+import { ConversationSummary, GeminiModel, Message } from '../../types/index';
 import { TextMetrics } from '../../utils/textMetrics';
 
 export const CHECKIN_SCHEMA_VERSION = 1;
@@ -62,6 +62,12 @@ export interface CheckIn {
     metrics: TextMetrics;
     /** Free note from the learner (how it felt, what was hard). */
     note?: string;
+    /**
+     * The same coach summary a Review conversation gets (summarizeConversation), requested
+     * by the learner for this one check-in and stored so it is never requested twice.
+     * Feedback is for the learner now; progress over time still comes from comparisons.
+     */
+    feedback?: ConversationSummary;
 }
 
 export interface CheckInComparisonDimension {

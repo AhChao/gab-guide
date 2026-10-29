@@ -7,6 +7,7 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { TopicModal } from '../../components/TopicModal';
 import { analyzeMessage, summarizeConversation, analyzeBatchMessages } from '../../services/geminiService';
 import { parseConversationText } from '../../utils/conversationParser';
+import { toCoachTranscript } from '../../utils/transcriptText';
 import { HistorySidebar } from './HistorySidebar';
 import { ReviewToolbar } from './ReviewToolbar';
 import { buildReportHtml, buildTxtExport } from './reviewExport';
@@ -264,9 +265,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({
 
     setIsSummaryLoading(true);
     try {
-      // Filter excluded messages
-      const includedMessages = messages.filter(m => !m.excluded);
-      const conversationText = includedMessages.map(m => `${m.role === 'user' ? 'Learner' : 'Partner'}: ${m.text}`).join('\n');
+      const conversationText = toCoachTranscript(messages);
       const { summary: resSummary, title: resTitle } = await summarizeConversation(settings.apiKey, settings.model, conversationText, activeConversation?.language || 'English');
       updateActiveConversation({ summary: resSummary, title: resTitle });
       setShowSummary(true);
