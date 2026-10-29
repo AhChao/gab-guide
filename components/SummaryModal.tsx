@@ -1,8 +1,22 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ConversationSummary } from '../types/index';
 import { getScoreColorClass } from '../utils/scoreUtils';
 import { SummaryPracticeTargets } from '../features/review/SummaryPracticeTargets';
+import { useBankContext } from '../features/bank/BankContext';
+import { unsavedLearnerTargets } from '../features/review/summaryTargets';
+
+/**
+ * Session Summary dialog.
+ *
+ * "Review Complete" saves the learner's target expressions into the Expression Bank before
+ * closing (decided 2026-10-30: a learner read the targets, closed without pressing Save, and
+ * Practice / hidden targets / shadowing had nothing to work with). Already-saved ones are
+ * skipped via features/review/summaryTargets, the same rule the section buttons use.
+ * Partner chunks stay manual. The header X is a dismiss and never saves.
+ *
+ * Needs <BankProvider> above it (App.tsx provides one app-wide; tests wrap it themselves).
+ */
 
 interface SummaryModalProps {
   summary: ConversationSummary | null;
@@ -23,7 +37,37 @@ const ScorePill: React.FC<{ score: number; label: string }> = ({ score, label })
 };
 
 export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose, conversationId, language = 'English' }) => {
+  const { expressions, loading, addMany } = useBankContext();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   if (!summary) return null;
+
+  const pending = unsavedLearnerTargets(summary.targetExpressions, expressions, conversationId, language);
+
+  const footerNote = (() => {
+    if (summary.targetExpressions === undefined || loading) return null;
+    if (pending.length === 0) return summary.targetExpressions.length > 0 ? 'All expressions above are already in Practice.' : null;
+    return pending.length === 1
+      ? 'Review Complete adds the 1 expression above to Practice.'
+      : `Review Complete adds the ${pending.length} expressions above to Practice.`;
+  })();
+
+  const complete = async () => {
+    setSaveError(null);
+    if (pending.length > 0) {
+      setSaving(true);
+      try {
+        await addMany(pending);
+      } catch (err: unknown) {
+        setSaveError(err instanceof Error && err.message ? err.message : 'Could not save. Please try again.');
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+    }
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -111,12 +155,20 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({ summary, onClose, co
           </section>
         </div>
 
-        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end flex-shrink-0">
+        <div className="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-4 flex-shrink-0">
+          {(saveError || footerNote) && (
+            <div className="min-w-0 text-right">
+              {saveError
+                ? <p className="text-xs text-red-600" role="alert">{saveError}</p>
+                : <p className="text-sm text-gray-500">{footerNote}</p>}
+            </div>
+          )}
           <button
-            onClick={onClose}
-            className="px-6 py-2.5 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-900 transition-all shadow-md active:scale-95"
+            onClick={complete}
+            disabled={saving}
+            className="flex-shrink-0 px-6 py-2.5 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-900 transition-all shadow-md active:scale-95 disabled:opacity-60 disabled:active:scale-100"
           >
-            Review Complete
+            {saving ? 'Saving…' : 'Review Complete'}
           </button>
         </div>
       </div>

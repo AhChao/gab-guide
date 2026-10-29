@@ -3,6 +3,7 @@ import { PartnerChunk, TargetExpression } from '../../types/index';
 import { ExpressionDraft } from '../bank/model';
 import { useBankContext } from '../bank/BankContext';
 import { normalizePhrase } from '../bank/store';
+import { learnerDraft, partnerDraft, savedPhraseKeys, unsavedLearnerTargets } from './summaryTargets';
 
 /**
  * Summary modal sections that feed the Expression Bank: the learner's target expressions
@@ -10,6 +11,8 @@ import { normalizePhrase } from '../bank/store';
  *
  * "Saved" is derived from the live bank (same language, same normalised phrase, not
  * archived), so it survives closing the modal and matches what the drawer shows. The
+ * drafts and the "saved" test come from ./summaryTargets, shared with the Review
+ * Complete auto-save in SummaryModal so both agree on what is already in the bank. The
  * store's `add` already returns the existing item for a duplicate, so a double click
  * cannot create two rows.
  *
@@ -50,31 +53,8 @@ export const SummaryPracticeTargets: React.FC<SummaryPracticeTargetsProps> = ({ 
 
   if (targetExpressions === undefined && partnerChunks === undefined) return null;
 
-  const savedKeys = new Set(
-    expressions.filter(e => !e.archived && e.language === language).map(e => normalizePhrase(e.phrase)),
-  );
+  const savedKeys = savedPhraseKeys(expressions, language);
   const isSaved = (phrase: string) => savedKeys.has(normalizePhrase(phrase));
-
-  const learnerDraft = (t: TargetExpression): ExpressionDraft => ({
-    phrase: t.phrase,
-    concept: t.concept,
-    original: t.original,
-    contrast: t.contrast,
-    example: t.example,
-    transferPrompt: t.transferPrompt,
-    source: 'learner',
-    sourceConversationId: conversationId,
-    language,
-  });
-
-  const partnerDraft = (c: PartnerChunk): ExpressionDraft => ({
-    phrase: c.phrase,
-    concept: c.concept,
-    example: c.example,
-    source: 'partner',
-    sourceConversationId: conversationId,
-    language,
-  });
 
   const run = async (keys: string[], write: () => Promise<unknown>) => {
     setError(null);
@@ -94,11 +74,10 @@ export const SummaryPracticeTargets: React.FC<SummaryPracticeTargetsProps> = ({ 
 
   const saveOne = (draft: ExpressionDraft) => run([normalizePhrase(draft.phrase)], () => add(draft));
 
-  const unsavedTargets = (targetExpressions ?? []).filter(t => !isSaved(t.phrase));
+  const unsavedTargets = unsavedLearnerTargets(targetExpressions, expressions, conversationId, language);
   const saveAll = () => {
     if (unsavedTargets.length === 0) return;
-    const drafts = unsavedTargets.map(learnerDraft);
-    return run(drafts.map(d => normalizePhrase(d.phrase)), () => addMany(drafts));
+    return run(unsavedTargets.map(d => normalizePhrase(d.phrase)), () => addMany(unsavedTargets));
   };
 
   const isBusy = (phrase: string) => busy.has(normalizePhrase(phrase));
@@ -141,7 +120,7 @@ export const SummaryPracticeTargets: React.FC<SummaryPracticeTargetsProps> = ({ 
                       )}
                       <p className="font-bold text-emerald-800 text-base">{t.phrase}</p>
                     </div>
-                    <SaveButton saved={isSaved(t.phrase)} busy={isBusy(t.phrase)} disabled={loading} onClick={() => saveOne(learnerDraft(t))} />
+                    <SaveButton saved={isSaved(t.phrase)} busy={isBusy(t.phrase)} disabled={loading} onClick={() => saveOne(learnerDraft(t, conversationId, language))} />
                   </div>
                   <p className="text-sm text-gray-700">{t.concept}</p>
                   {t.contrast && <p className="text-xs text-gray-500 italic">{t.contrast}</p>}
@@ -174,7 +153,7 @@ export const SummaryPracticeTargets: React.FC<SummaryPracticeTargetsProps> = ({ 
                 <div key={`${c.phrase}-${i}`} className="bg-sky-50/50 border border-sky-100 p-4 rounded-xl space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-bold text-sky-800 text-base min-w-0">{c.phrase}</p>
-                    <SaveButton saved={isSaved(c.phrase)} busy={isBusy(c.phrase)} disabled={loading} onClick={() => saveOne(partnerDraft(c))} />
+                    <SaveButton saved={isSaved(c.phrase)} busy={isBusy(c.phrase)} disabled={loading} onClick={() => saveOne(partnerDraft(c, conversationId, language))} />
                   </div>
                   <p className="text-sm text-gray-700">{c.concept}</p>
                   {c.example && (
