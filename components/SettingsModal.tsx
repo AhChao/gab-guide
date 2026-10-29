@@ -4,6 +4,7 @@ import { GeminiModel, ColorByScoring } from '../types/index';
 import { ConfirmModal } from './ConfirmModal';
 import { geminiGuard } from '../services/callGuard';
 import { DataBackupSection } from '../features/progress/DataBackupSection';
+import { ApiKeyCheck } from './ApiKeyCheck';
 
 interface SettingsModalProps {
   currentKey: string;
@@ -92,6 +93,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[10px] text-gray-500">
               Get one for free at <a href="https://aistudio.google.com/" target="_blank" className="text-blue-600 underline">aistudio.google.com</a>
             </p>
+            <ApiKeyCheck apiKey={key} model={model} />
           </div>
 
           {/* AI Model */}

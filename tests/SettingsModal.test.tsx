@@ -11,7 +11,8 @@ import { CheckIn } from '../features/progress/model';
 import { ColorByScoring, GeminiModel } from '../types/index';
 import { exportBackup } from '../features/bank/backup';
 
-vi.mock('../services/callGuard', () => ({
+vi.mock('../services/callGuard', async () => ({
+    ...await vi.importActual<typeof import('../services/callGuard')>('../services/callGuard'),
     geminiGuard: { todayCount: () => 7, todayLabels: () => [] },
 }));
 

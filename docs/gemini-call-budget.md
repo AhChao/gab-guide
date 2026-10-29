@@ -21,6 +21,7 @@ Rules for anyone adding a feature:
 | Review / Practice | Say it again (typed recall), per attempt | 1 | `gradeRecall` |
 | Topic | Generate cheat sheet | 1 | `generateCheatSheet` |
 | Progress | Compare two check-ins | 1, pinned model `CHECKIN_COMPARE_MODEL` | `compareCheckins` |
+| Settings | Test key | 1 (a model metadata read, no generation quota, still counted) | `checkApiKey` |
 | Practice | Listen to natives (YouGlish), demo voice (Kokoro in-browser), record and replay | 0 | — |
 | Progress | Save a check-in, compute text metrics | 0 | `computeTextMetrics` |
 
