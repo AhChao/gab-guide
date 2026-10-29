@@ -6,6 +6,7 @@ import {
   resetYouGlishLoaderForTests,
   YOUGLISH_SCRIPT_URL,
   DEFAULT_COMPONENTS,
+  WIDGET_CHROME_HEIGHT,
 } from '../features/shadow/youglish';
 
 const scripts = () => Array.from(document.querySelectorAll(`script[src="${YOUGLISH_SCRIPT_URL}"]`)) as HTMLScriptElement[];
@@ -79,6 +80,17 @@ describe('createWidget', () => {
     expect(() => createWidget(document.createElement('div'))).toThrow(/not loaded/);
   });
 
+  it('leaves room for the control bar and caption below a 16:9 player', () => {
+    const ctor = vi.fn();
+    window.YG = {
+      Widget: function (this: unknown, el: unknown, opts: unknown) { ctor(el, opts); } as unknown as NonNullable<Window['YG']>['Widget'],
+    };
+    createWidget(document.createElement('div'), { width: 640 });
+    const [, opts] = ctor.mock.calls[0];
+    expect(opts.width).toBe(640);
+    expect(opts.height).toBe(360 + WIDGET_CHROME_HEIGHT);
+  });
+
   it('builds a widget with captions and controls only, never below 200x200', () => {
     const ctor = vi.fn();
     window.YG = {
@@ -95,7 +107,8 @@ describe('createWidget', () => {
     expect(opts.components).toBe(DEFAULT_COMPONENTS);
     expect(DEFAULT_COMPONENTS & 1).toBe(0); // no search box
     expect(opts.width).toBe(200);
-    expect(opts.height).toBe(200);
+    expect(opts.height).toBe(Math.round(200 * 9 / 16 + WIDGET_CHROME_HEIGHT));
+    expect(opts.autoStart).toBe(0);
     expect(opts.events.onFetchDone).toBe(onFetchDone);
   });
 });

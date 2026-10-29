@@ -69,17 +69,13 @@ describe('ListenNatives', () => {
     expect(screen.queryByTestId('listen-natives-controls')).toBeNull();
   });
 
-  it('shows the result count, controls and the marked caption', async () => {
+  it('shows the result count and controls once clips are found', async () => {
     render(<ListenNatives query="break the ice" />);
     await settle();
     fire('onFetchDone', { query: 'break the ice', lang: 'english', totalResult: 42 });
-    fire('onCaptionChange', { caption: 'we had to [[[break the ice]]] first', id: 1 });
 
     expect(screen.getByTestId('listen-natives-controls')).toBeInTheDocument();
     expect(screen.getByText('42 clips')).toBeInTheDocument();
-    const mark = screen.getByTestId('listen-natives-caption').querySelector('mark');
-    expect(mark).not.toBeNull();
-    expect(mark!.textContent).toBe('break the ice');
 
     fireEvent.click(screen.getByLabelText('Next clip'));
     fireEvent.click(screen.getByLabelText('Replay clip'));
@@ -89,6 +85,36 @@ describe('ListenNatives', () => {
     expect(h.widgets[0].replay).toHaveBeenCalledTimes(1);
     expect(h.widgets[0].previous).toHaveBeenCalledTimes(1);
     expect(h.widgets[0].setSpeed).toHaveBeenCalledWith(0.75);
+  });
+
+  it('plays on its own only for the first fetch; a query change loads without sound until Play', async () => {
+    const { rerender } = render(<ListenNatives query="break the ice" />);
+    await settle();
+    fire('onFetchDone', { query: 'break the ice', lang: 'english', totalResult: 3 });
+    expect(h.widgets[0].play).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Pause clip')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Pause clip'));
+    expect(h.widgets[0].pause).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Play clip')).toBeInTheDocument();
+
+    rerender(<ListenNatives query="fair enough" />);
+    await settle();
+    fire('onFetchDone', { query: 'fair enough', lang: 'english', totalResult: 5 });
+    expect(h.widgets[0].play).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Play clip')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Play clip'));
+    expect(h.widgets[0].play).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByLabelText('Next clip'));
+    expect(screen.getByLabelText('Pause clip')).toBeInTheDocument();
+  });
+
+  it('does not start playing when the first fetch finds nothing', async () => {
+    render(<ListenNatives query="zzqx" />);
+    await settle();
+    fire('onFetchDone', { query: 'zzqx', lang: 'english', totalResult: 0 });
+    expect(h.widgets[0].play).not.toHaveBeenCalled();
   });
 
   it('always shows the YouTube terms and Google privacy links', async () => {

@@ -45,6 +45,14 @@ export const DEFAULT_COMPONENTS = YG_COMPONENTS.CAPTION | YG_COMPONENTS.CONTROL_
 /** Below this YouGlish's terms are breached (player must stay at least 200x200). */
 export const MIN_PLAYER_SIZE = 200;
 
+/**
+ * Everything YouGlish shows (player, its control bar, the caption) is drawn inside one
+ * iframe whose height is the `height` option. A 16:9 box only fits the player, so the
+ * caption is clipped (seen 2026-10-30). This is the room the control bar plus two caption
+ * lines need on top of the 16:9 player.
+ */
+export const WIDGET_CHROME_HEIGHT = 170;
+
 export interface YouGlishWidget {
   fetch(query: string, lang: string, accent?: string): void;
   play(): void;
@@ -164,8 +172,14 @@ export function resetYouGlishLoaderForTests(): void {
 export interface CreateWidgetOptions {
   /** Pixels. Defaults to the container's width, never below the 200px minimum. */
   width?: number;
-  /** Pixels. Defaults to a 16:9 box from the width, never below the 200px minimum. */
+  /** Pixels. Defaults to a 16:9 box from the width plus WIDGET_CHROME_HEIGHT for the control bar and caption. */
   height?: number;
+  /**
+   * Whether YouGlish starts playing on its own after every `fetch`. Default false: a
+   * widget that outlives a card switch would otherwise start a new clip the moment the
+   * learner moves to the next expression (seen 2026-10-30 after the learner had paused).
+   * Callers that want sound decide when to call `play()`.
+   */
   autoStart?: boolean;
   events?: YouGlishEvents;
 }
@@ -181,7 +195,7 @@ export function createWidget(container: HTMLElement | string, options: CreateWid
   const element = typeof container === 'string' ? document.getElementById(container) : container;
   const measured = element?.clientWidth || 0;
   const width = Math.max(MIN_PLAYER_SIZE, Math.round(options.width ?? (measured || 480)));
-  const height = Math.max(MIN_PLAYER_SIZE, Math.round(options.height ?? width * 9 / 16));
+  const height = Math.max(MIN_PLAYER_SIZE, Math.round(options.height ?? width * 9 / 16 + WIDGET_CHROME_HEIGHT));
 
   // YG.Widget only accepts an element id (passing the element itself throws
   // "Cannot set properties of null (setting 'outerHTML')", verified 2026-10-21 against
@@ -197,7 +211,7 @@ export function createWidget(container: HTMLElement | string, options: CreateWid
   return new api.Widget(containerId, {
     width,
     height,
-    autoStart: options.autoStart === false ? 0 : 1,
+    autoStart: options.autoStart === true ? 1 : 0,
     components: DEFAULT_COMPONENTS,
     events: options.events ?? {},
   });

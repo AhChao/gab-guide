@@ -2,8 +2,9 @@
  * ListenNatives: real YouTube clips of an expression, via one YouGlish widget.
  *
  * Responsibility: load YouGlish, create exactly one widget per mounted component, fetch
- * `query`, and render this app's own controls (previous / replay / next, speed), the result
- * count, the current caption and the required terms links.
+ * `query`, and render this app's own controls (previous / play / replay / next, speed), the
+ * result count and the required terms links. The caption is YouGlish's own, inside its
+ * iframe (large, highlighted, synced to the clip); the widget height leaves room for it.
  *
  * External dependency: ./youglish (script from youglish.com, which embeds a YouTube iframe).
  *
@@ -14,20 +15,19 @@
  *   the query effect only runs `fetch` once a widget exists, so the first query is fetched once.
  * - Load failures never throw out of the component; they turn into a one-line message.
  * - `setSpeed` is a request; the shown speed follows `onSpeedChange` when YouGlish reports it.
+ * - Sound only starts when the learner asked for it: the first fetch (the learner just
+ *   opened the clips) plays on its own; a fetch caused by a query change (the learner moved
+ *   to another expression, or searched a shorter phrase) only loads, and Play starts it.
+ *   YouGlish's own `autoStart` is off for that reason (see createWidget).
  * - YouGlish terms: keep the YouTube Terms / Google Privacy links and "Powered by YouGlish"
  *   visible, and keep the player at least 200x200 (enforced in createWidget).
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { createWidget, loadYouGlish, parseCaption, type YouGlishWidget } from './youglish';
+import { createWidget, loadYouGlish, type YouGlishWidget } from './youglish';
 
 /** Strip surrounding quotes and trailing punctuation: YouGlish matches phrases literally. */
 export const normalizeQuery = (q: string): string =>
   q.trim().replace(/^["'“‘]+/, '').replace(/["'”’.!?,;:]+$/, '').trim();
-
-/** The widget delivers captions percent-encoded; a malformed sequence falls back to the raw text. */
-export const decodeCaption = (raw: string): string => {
-  try { return decodeURIComponent(raw.replace(/\+/g, '%20')); } catch { return raw; }
-};
 
 /** `replaceChildren` is missing in the jsdom this repo tests on; this works everywhere. */
 const clearChildren = (el: HTMLElement) => {
@@ -78,8 +78,11 @@ export const ListenNatives: React.FC<ListenNativesProps> = ({ query, language = 
 
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [total, setTotal] = useState<number | null>(null);
-  const [caption, setCaption] = useState('');
   const [speed, setSpeed] = useState<number>(1);
+  // What the learner last asked for; YouGlish does not report play/pause, so this is ours.
+  const [playing, setPlaying] = useState(false);
+  // True only for the fetch issued at creation: the learner just opened the clips.
+  const playOnFetch = useRef(true);
 
   // Create the single widget for this component's lifetime.
   useEffect(() => {
@@ -96,10 +99,16 @@ export const ListenNatives: React.FC<ListenNativesProps> = ({ query, language = 
         containerRef.current.appendChild(host);
         const widget = createWidget(host, {
           events: {
-            onFetchDone: (e) => { if (!cancelled) setTotal(typeof e.totalResult === 'number' ? e.totalResult : 0); },
-            // Captions arrive percent-encoded ("you%20created%20...", seen 2026-10-21).
-            onCaptionChange: (e) => { if (!cancelled) setCaption(decodeCaption(e.caption ?? '')); },
-            onVideoChange: () => { if (!cancelled) setCaption(''); },
+            onFetchDone: (e) => {
+              if (cancelled) return;
+              const n = typeof e.totalResult === 'number' ? e.totalResult : 0;
+              setTotal(n);
+              if (playOnFetch.current && n > 0) {
+                widgetRef.current?.play();
+                setPlaying(true);
+              }
+              playOnFetch.current = false;
+            },
             onSpeedChange: (e) => { if (!cancelled && typeof e.speed === 'number') setSpeed(e.speed); },
             onError: (e) => {
               // 1 = one video failed to play (Next still works); 2/3 = the widget itself is unusable.
@@ -133,7 +142,8 @@ export const ListenNatives: React.FC<ListenNativesProps> = ({ query, language = 
     const widget = widgetRef.current;
     if (!widget) return;
     setTotal(null);
-    setCaption('');
+    setPlaying(false);
+    playOnFetch.current = false;
     widget.fetch(effectiveQuery, language, accent);
   }, [effectiveQuery, language, accent]);
 
@@ -141,6 +151,21 @@ export const ListenNatives: React.FC<ListenNativesProps> = ({ query, language = 
     e.preventDefault();
     const next = normalizeQuery(draftQuery);
     if (next) setQueryOverride(next);
+  };
+
+  const togglePlay = () => {
+    const widget = widgetRef.current;
+    if (!widget) return;
+    if (playing) widget.pause(); else widget.play();
+    setPlaying(!playing);
+  };
+
+  /** Replay / previous / next all start playback in YouGlish. */
+  const control = (fn: (w: YouGlishWidget) => void) => {
+    const widget = widgetRef.current;
+    if (!widget) return;
+    fn(widget);
+    setPlaying(true);
   };
 
   const changeSpeed = (rate: number) => {
@@ -195,23 +220,34 @@ export const ListenNatives: React.FC<ListenNativesProps> = ({ query, language = 
       <div
         ref={containerRef}
         data-testid="youglish-container"
-        className={`w-full min-h-[200px] rounded-lg overflow-hidden bg-gray-50 ${noClips ? 'hidden' : ''}`}
+        className={`w-full min-h-[200px] rounded-lg bg-gray-50 ${noClips ? 'hidden' : ''}`}
       />
 
       {showControls && (
         <div className="flex flex-wrap items-center gap-2" data-testid="listen-natives-controls">
           <div className="flex items-center">
-            <IconButton label="Previous clip" onClick={() => widgetRef.current?.previous()}>
+            <IconButton label="Previous clip" onClick={() => control(w => w.previous())}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
               </svg>
             </IconButton>
-            <IconButton label="Replay clip" onClick={() => widgetRef.current?.replay()}>
+            <IconButton label={playing ? 'Pause clip' : 'Play clip'} onClick={togglePlay}>
+              {playing ? (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </IconButton>
+            <IconButton label="Replay clip" onClick={() => control(w => w.replay())}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h5M5.07 15a7 7 0 101.67-7.27L4 9" />
               </svg>
             </IconButton>
-            <IconButton label="Next clip" onClick={() => widgetRef.current?.next()}>
+            <IconButton label="Next clip" onClick={() => control(w => w.next())}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
@@ -234,14 +270,6 @@ export const ListenNatives: React.FC<ListenNativesProps> = ({ query, language = 
 
           <span className="text-xs text-gray-500">{total === 1 ? '1 clip' : `${total} clips`}</span>
         </div>
-      )}
-
-      {showControls && caption && (
-        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100" data-testid="listen-natives-caption">
-          {parseCaption(caption).map((seg, i) =>
-            seg.marked ? <mark key={i} className="bg-yellow-100 text-gray-900 rounded px-0.5">{seg.text}</mark> : <React.Fragment key={i}>{seg.text}</React.Fragment>,
-          )}
-        </p>
       )}
 
       <p className="text-[11px] text-gray-400">
