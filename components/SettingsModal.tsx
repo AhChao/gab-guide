@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { GeminiModel, ColorByScoring } from '../types/index';
+import { ColorByScoring, type GeminiModelId, type ModelCatalog } from '../types/index';
+import { modelOptions } from '../services/modelCatalog';
 import { ConfirmModal } from './ConfirmModal';
 import { geminiGuard } from '../services/callGuard';
 import { DataBackupSection } from '../features/progress/DataBackupSection';
@@ -8,29 +9,21 @@ import { ApiKeyCheck } from './ApiKeyCheck';
 
 interface SettingsModalProps {
   currentKey: string;
-  currentModel: GeminiModel;
+  currentModel: GeminiModelId;
+  currentAvailableModels?: ModelCatalog;
   currentColorByScoring: ColorByScoring;
   currentCustomLanguages: string[];
   currentShowConversationScores: boolean;
   onSave: (settings: {
     key: string;
-    model: GeminiModel;
+    model: GeminiModelId;
+    availableModels?: ModelCatalog;
     colorByScoring: ColorByScoring;
     customLanguages: string[];
     showConversationScores: boolean;
   }) => void;
   onClose: () => void;
 }
-
-const MODEL_OPTIONS: { value: GeminiModel; label: string; description: string }[] = [
-  { value: GeminiModel.GEMINI_3_FLASH_PREVIEW, label: 'Gemini 3 Flash Preview', description: 'Latest v3 model, optimized for speed and reasoning' },
-  { value: GeminiModel.GEMINI_3_PRO_PREVIEW, label: 'Gemini 3 Pro Preview', description: 'Most capable v3 model for complex tasks' },
-  { value: GeminiModel.GEMINI_2_0_FLASH, label: 'Gemini 2.0 Flash', description: 'Fast and balanced (v2.0)' },
-  { value: GeminiModel.GEMINI_2_0_FLASH_LITE, label: 'Gemini 2.0 Flash Lite', description: 'Highly efficient, low latency (v2.0)' },
-  { value: GeminiModel.GEMINI_2_5_PRO, label: 'Gemini 2.5 Pro', description: 'Advanced reasoning and capability (v2.5)' },
-  { value: GeminiModel.GEMINI_2_5_FLASH_LITE, label: 'Gemini 2.5 Flash Lite', description: 'Fastest v2.5 model' },
-  { value: GeminiModel.GEMINI_2_5_FLASH_PREVIEW, label: 'Gemini 2.5 Flash Preview', description: 'Cutting-edge v2.5 features' },
-];
 
 const COLOR_OPTIONS: { value: ColorByScoring; label: string; description: string }[] = [
   { value: ColorByScoring.ALWAYS, label: 'Always', description: 'Color when analyzed' },
@@ -41,6 +34,7 @@ const COLOR_OPTIONS: { value: ColorByScoring; label: string; description: string
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentKey,
   currentModel,
+  currentAvailableModels,
   currentColorByScoring,
   currentCustomLanguages,
   currentShowConversationScores,
@@ -48,7 +42,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose
 }) => {
   const [key, setKey] = useState(currentKey);
-  const [model, setModel] = useState<GeminiModel>(currentModel);
+  const [model, setModel] = useState<GeminiModelId>(currentModel);
+  const [availableModels, setAvailableModels] = useState<ModelCatalog | undefined>(currentAvailableModels);
+  const options = modelOptions(availableModels);
+  const loaded = availableModels !== undefined && availableModels.models.length > 0;
+  const modelInList = options.some(o => o.id === model);
   const [colorByScoring, setColorByScoring] = useState<ColorByScoring>(currentColorByScoring);
   const [customLanguages, setCustomLanguages] = useState<string[]>(currentCustomLanguages);
   const [showConversationScores, setShowConversationScores] = useState(currentShowConversationScores);
@@ -65,7 +63,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleSave = () => {
-    onSave({ key, model, colorByScoring, customLanguages, showConversationScores });
+    onSave({ key, model, availableModels, colorByScoring, customLanguages, showConversationScores });
   };
 
   return (
@@ -93,21 +91,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[10px] text-gray-500">
               Get one for free at <a href="https://aistudio.google.com/" target="_blank" className="text-blue-600 underline">aistudio.google.com</a>
             </p>
-            <ApiKeyCheck apiKey={key} model={model} />
+            <ApiKeyCheck apiKey={key} onModels={setAvailableModels} />
           </div>
 
           {/* AI Model */}
           <div className="space-y-2">
-            <label className="text-sm font-bold text-gray-700 block">AI Model</label>
+            <label htmlFor="settings-model" className="text-sm font-bold text-gray-700 block">AI Model</label>
             <select
+              id="settings-model"
               value={model}
-              onChange={(e) => setModel(e.target.value as GeminiModel)}
+              onChange={(e) => setModel(e.target.value)}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
             >
-              {MODEL_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label} — {opt.description}</option>
+              {!modelInList && <option value={model}>{model}</option>}
+              {options.map(opt => (
+                <option key={opt.id} value={opt.id}>{opt.displayName}{opt.description ? ` — ${opt.description}` : ''}</option>
               ))}
             </select>
+            {loaded && !modelInList && (
+              <p className="text-[10px] text-red-600" data-testid="model-not-in-list">
+                This model is not in the list your key can use. Choose one from the list.
+              </p>
+            )}
+            <p className="text-[10px] text-gray-500" data-testid="model-list-source">
+              {loaded
+                ? `Loaded from Gemini on ${new Date(availableModels.fetchedAt).toLocaleDateString()}.`
+                : 'A built-in list. Test key loads the models your key can use.'}
+            </p>
           </div>
 
           {/* Color By Scoring */}

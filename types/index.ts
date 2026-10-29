@@ -88,9 +88,30 @@ export enum ColorByScoring {
     NEVER = 'never',
 }
 
+/**
+ * A model id as the Gemini API names it (without the `models/` prefix). Known ids are in
+ * the GeminiModel enum; ids loaded from the API at runtime are any string.
+ */
+export type GeminiModelId = GeminiModel | (string & {});
+
+/** One chat-capable model as returned by the Gemini models list. */
+export interface GeminiModelInfo {
+    id: GeminiModelId;
+    displayName: string;
+    description: string;
+}
+
+/** The models the user's key can use, loaded from Gemini by Test key in Settings. */
+export interface ModelCatalog {
+    fetchedAt: number;
+    models: GeminiModelInfo[];
+}
+
 export interface AppSettings {
     apiKey: string;
-    model: GeminiModel;
+    model: GeminiModelId;
+    /** Absent until Test key has loaded a list; the built-in list is used meanwhile. */
+    availableModels?: ModelCatalog;
     colorByScoring: ColorByScoring;
     customLanguages: string[];
     showConversationScores: boolean;

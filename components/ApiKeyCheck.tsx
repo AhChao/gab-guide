@@ -1,31 +1,42 @@
 /**
  * "Test key" control for the Settings dialog: one click, one request, one line of result.
- * Uses the key and model currently typed in the dialog (not the saved ones), so the user
- * can verify before saving. See services/keyCheck.ts for what the request is.
+ * Uses the key currently typed in the dialog (not the saved one), so the user can verify
+ * before saving. A successful test also hands the loaded model list to the dialog through
+ * `onModels`. See services/keyCheck.ts for what the request is.
  */
 import React, { useEffect, useState } from 'react';
 import { checkApiKey, type KeyCheckResult } from '../services/keyCheck';
+import type { ModelCatalog } from '../types/index';
 
 interface ApiKeyCheckProps {
   apiKey: string;
-  model: string;
+  onModels: (catalog: ModelCatalog) => void;
 }
 
-export const ApiKeyCheck: React.FC<ApiKeyCheckProps> = ({ apiKey, model }) => {
+export const ApiKeyCheck: React.FC<ApiKeyCheckProps> = ({ apiKey, onModels }) => {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<KeyCheckResult | null>(null);
 
-  // A result describes the key and model it was produced for; editing either makes it stale.
-  useEffect(() => { setResult(null); }, [apiKey, model]);
+  // A result describes the key it was produced for; editing the key makes it stale.
+  useEffect(() => { setResult(null); }, [apiKey]);
 
   const runCheck = async () => {
     if (checking) return;
     setChecking(true);
     try {
-      setResult(await checkApiKey(apiKey, model));
+      const next = await checkApiKey(apiKey);
+      setResult(next);
+      if (next.ok) onModels({ fetchedAt: Date.now(), models: next.models });
     } finally {
       setChecking(false);
     }
+  };
+
+  const summary = (r: KeyCheckResult): string => {
+    if (r.ok === false) return r.message;
+    return r.models.length === 1
+      ? 'Key accepted. 1 model is available with this key.'
+      : `Key accepted. ${r.models.length} models are available with this key.`;
   };
 
   return (
@@ -44,7 +55,7 @@ export const ApiKeyCheck: React.FC<ApiKeyCheckProps> = ({ apiKey, model }) => {
           data-testid="api-key-check-result"
           className={`text-xs leading-5 ${result.ok ? 'text-green-700' : 'text-red-600'}`}
         >
-          {result.ok ? `Key accepted. ${result.modelName} is available with this key.` : result.message}
+          {summary(result)}
         </p>
       )}
     </div>

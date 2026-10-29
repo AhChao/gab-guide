@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AnalysisResult, AnalysisState, GeminiModel } from '../types/index';
+import { AnalysisResult, AnalysisState, GeminiModel, GeminiModelId } from '../types/index';
 import { parseExtensions } from '../utils/extensionsParser';
 import { AnalysisPractice } from '../features/review/AnalysisPractice';
 
@@ -18,7 +18,7 @@ interface AnalysisDrawerProps {
     conversationId?: string;
     language: string;
     apiKey: string;
-    model: GeminiModel;
+    model: GeminiModelId;
   };
 }
 

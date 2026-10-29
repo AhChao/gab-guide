@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GeminiModel, Message } from '../../types/index';
+import { GeminiModel, GeminiModelId, Message } from '../../types/index';
 import { Expression, HiddenTargetMatch } from '../bank/model';
 import { useBankContext } from '../bank/BankContext';
 import { matchHiddenTargets } from '../../services/practiceService';
@@ -27,7 +27,7 @@ export interface HiddenTargetsPanelProps {
   messages: Message[];
   language: string;
   apiKey: string;
-  model: GeminiModel;
+  model: GeminiModelId;
   /** Returns false (and opens Settings) when no API key is configured yet. */
   checkApiKey: () => boolean;
   /** Called after Skip, after the closing button, or when none of the targets exist any more. */

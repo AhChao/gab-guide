@@ -59,6 +59,7 @@ const AppContent: React.FC = () => {
         <SettingsModal
           currentKey={settings.apiKey}
           currentModel={settings.model}
+          currentAvailableModels={settings.availableModels}
           currentColorByScoring={settings.colorByScoring}
           currentCustomLanguages={settings.customLanguages}
           currentShowConversationScores={settings.showConversationScores}
@@ -66,6 +67,7 @@ const AppContent: React.FC = () => {
             setSettings({
               apiKey: s.key,
               model: s.model,
+              availableModels: s.availableModels,
               colorByScoring: s.colorByScoring,
               customLanguages: s.customLanguages,
               showConversationScores: s.showConversationScores

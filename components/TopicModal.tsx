@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getRandomTopic, getLevelLabel, TopicLevel } from '../data/smallTalkTopics';
-import { CheatSheetContent, GeminiModel } from '../types/index';
+import { CheatSheetContent, GeminiModel, GeminiModelId } from '../types/index';
 import { generateCheatSheet } from '../services/geminiService';
 import { CheatSheetModal } from './CheatSheetModal';
 import { Expression, buildHiddenTargetsBlock, selectHiddenTargets } from '../features/bank/model';
@@ -11,7 +11,7 @@ interface TopicModalProps {
     onClose: () => void;
     language?: string;
     apiKey?: string;
-    model?: GeminiModel;
+    model?: GeminiModelId;
     customLanguages?: string[];
     onAddCustomLanguage?: (lang: string) => void;
     /**

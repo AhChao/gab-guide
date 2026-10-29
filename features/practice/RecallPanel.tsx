@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GeminiModel } from '../../types/index';
+import { GeminiModel, GeminiModelId } from '../../types/index';
 import { RecallGrade } from '../bank/model';
 import { gradeRecall } from '../../services/practiceService';
 
@@ -20,7 +20,7 @@ import { gradeRecall } from '../../services/practiceService';
 export interface RecallPanelProps {
   target: { id?: string; phrase: string; concept: string; transferPrompt?: string };
   apiKey: string;
-  model: GeminiModel;
+  model: GeminiModelId;
   language: string;
   /** Called once per graded attempt. Review records to the bank when target.id exists; Practice always does. */
   onGraded?: (grade: RecallGrade, learnerText: string) => void;

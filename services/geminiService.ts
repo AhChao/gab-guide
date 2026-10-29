@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, CheatSheetContent, ConversationSummary, GeminiModel, Message, PartnerChunk, TargetExpression } from "../types/index";
+import { AnalysisResult, CheatSheetContent, ConversationSummary, GeminiModel, GeminiModelId, Message, PartnerChunk, TargetExpression } from "../types/index";
 import { TopicLevel } from "../data/smallTalkTopics";
 import { geminiGuard, MIN_INTERVAL_MS } from "./callGuard";
 import { cleanString, extractJson, GeminiResponseError } from "./practiceService";
@@ -39,7 +39,7 @@ export function withLearningFields(analysis: AnalysisResult): AnalysisResult {
   return out;
 }
 
-export const analyzeMessage = async (apiKey: string, model: GeminiModel, message: string, context: string, language: string = 'English'): Promise<AnalysisResult> => {
+export const analyzeMessage = async (apiKey: string, model: GeminiModelId, message: string, context: string, language: string = 'English'): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey });
 
   // Use the same structure as analyzeBatchMessages for consistency
@@ -127,7 +127,7 @@ interface BatchAnalysisItem {
 
 export const analyzeBatchMessages = async (
   apiKey: string,
-  model: GeminiModel,
+  model: GeminiModelId,
   allMessages: Message[],
   userMessagesToAnalyze: { id: string; text: string; index: number }[],
   language: string = 'English'
@@ -261,7 +261,7 @@ ${LEARNING_FIELDS_INSTRUCTION}`,
   return results;
 };
 
-export const summarizeConversation = async (apiKey: string, model: GeminiModel, conversationText: string, language: string = 'English'): Promise<{ summary: ConversationSummary, title: string }> => {
+export const summarizeConversation = async (apiKey: string, model: GeminiModelId, conversationText: string, language: string = 'English'): Promise<{ summary: ConversationSummary, title: string }> => {
   const ai = new GoogleGenAI({ apiKey });
   const response = await geminiGuard.run('summarize', () => ai.models.generateContent({
     model,
@@ -431,7 +431,7 @@ export function normalizePartnerChunks(raw: unknown): PartnerChunk[] {
 
 export const generateCheatSheet = async (
   apiKey: string,
-  model: GeminiModel,
+  model: GeminiModelId,
   topic: string,
   level: TopicLevel,
   language: string,

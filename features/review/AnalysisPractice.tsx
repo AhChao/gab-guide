@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnalysisResult, GeminiModel } from '../../types/index';
+import { AnalysisResult, GeminiModel, GeminiModelId } from '../../types/index';
 import { useBankContext } from '../bank/BankContext';
 import { normalizePhrase } from '../bank/store';
 import { RecallPanel } from '../practice/RecallPanel';
@@ -24,7 +24,7 @@ export interface AnalysisPracticeProps {
   conversationId?: string;
   language: string;
   apiKey: string;
-  model: GeminiModel;
+  model: GeminiModelId;
 }
 
 export const AnalysisPractice: React.FC<AnalysisPracticeProps> = ({ analysis, original, conversationId, language, apiKey, model }) => {

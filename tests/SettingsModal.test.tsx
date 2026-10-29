@@ -16,6 +16,13 @@ vi.mock('../services/callGuard', async () => ({
     geminiGuard: { todayCount: () => 7, todayLabels: () => [] },
 }));
 
+vi.mock('../services/keyCheck', () => ({
+    checkApiKey: vi.fn(async () => ({ ok: true, models: [
+        { id: 'gemini-2.5-flash-lite', displayName: 'Gemini 2.5 Flash Lite', description: 'fast' },
+        { id: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro', description: 'strong' },
+    ] })),
+}));
+
 vi.mock('../features/bank/backup', () => ({
     exportBackup: vi.fn(async () => '{"app":"gab-guide"}'),
     parseBackup: vi.fn(),
@@ -25,13 +32,13 @@ vi.mock('../features/bank/backup', () => ({
 // jsdom 13 has no MutationObserver, so waitFor is unavailable; flush one macrotask instead.
 const settle = () => act(async () => { await new Promise(r => setTimeout(r, 0)); });
 
-const renderModal = (onSave = vi.fn()) =>
+const renderModal = (onSave = vi.fn(), currentModel: string = GeminiModel.GEMINI_2_5_FLASH_LITE) =>
     render(
         <BankProvider store={createBankStore(createMemoryAdapter<Expression>())}>
             <CheckinProvider store={createCheckinStore(createMemoryAdapter<CheckIn>(), createMemoryAdapter<StoredComparison>())}>
                 <SettingsModal
                     currentKey="k"
-                    currentModel={GeminiModel.GEMINI_2_5_FLASH_LITE}
+                    currentModel={currentModel}
                     currentColorByScoring={ColorByScoring.ALWAYS}
                     currentCustomLanguages={[]}
                     currentShowConversationScores={false}
@@ -89,9 +96,38 @@ describe('SettingsModal', () => {
         expect(onSave).toHaveBeenCalledWith({
             key: 'k',
             model: GeminiModel.GEMINI_2_5_FLASH_LITE,
+            availableModels: undefined,
             colorByScoring: ColorByScoring.ALWAYS,
             customLanguages: [],
             showConversationScores: false,
+        });
+    });
+
+    it('shows the built-in list until Test key loads the models the key can use', async () => {
+        const onSave = vi.fn();
+        renderModal(onSave, GeminiModel.GEMINI_3_FLASH_PREVIEW);
+        await settle();
+        const select = screen.getByRole('combobox', { name: 'AI Model' }) as HTMLSelectElement;
+        expect(select.options.length).toBe(7);
+        expect(screen.getByTestId('model-list-source')).toHaveTextContent('A built-in list.');
+
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Test key' })); });
+        await settle();
+
+        expect(Array.from(select.options).map(o => o.value)).toEqual([
+            GeminiModel.GEMINI_3_FLASH_PREVIEW, 'gemini-2.5-flash-lite', 'gemini-2.5-pro',
+        ]);
+        expect(screen.getByTestId('model-not-in-list')).toBeInTheDocument();
+        expect(screen.getByTestId('model-list-source')).toHaveTextContent('Loaded from Gemini on');
+
+        fireEvent.change(select, { target: { value: 'gemini-2.5-pro' } });
+        expect(screen.queryByTestId('model-not-in-list')).toBeNull();
+        expect(Array.from(select.options).map(o => o.value)).toEqual(['gemini-2.5-flash-lite', 'gemini-2.5-pro']);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+        expect(onSave.mock.calls[0][0]).toMatchObject({
+            model: 'gemini-2.5-pro',
+            availableModels: { models: [expect.objectContaining({ id: 'gemini-2.5-flash-lite' }), expect.objectContaining({ id: 'gemini-2.5-pro' })] },
         });
     });
 });
