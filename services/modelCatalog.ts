@@ -30,10 +30,36 @@ export interface RawGeminiModel {
   supportedGenerationMethods?: string[];
 }
 
-/** Models that generate text but are not what a chat analysis should run on. */
-const NOT_CHAT = /embed|imagen|image|veo|tts|audio|live|aqa|learnlm|robotics|computer-use|gemma/i;
+/**
+ * What stays out of the dropdown. The list endpoint returns every model the key can call,
+ * including image, music, speech, agent and task-tuned variants that accept generateContent
+ * but are the wrong tool for a text analysis. Rules, checked on the id and the display name
+ * (the id naming is not consistent across families):
+ * - only the Gemini text family (`gemini-…`), so Lyria, Nano Banana, Antigravity, Deep
+ *   Research, Imagen, Veo and Gemma are out by id alone;
+ * - no task-specific variants: image, tts, audio, live, transcribe, custom tools, computer
+ *   use, robotics, embeddings;
+ * - nothing Google marks as deprecated, rerouted or retired in its name or description.
+ */
+const NOT_CHAT_ID = /embed|imagen|image|veo|tts|audio|live|aqa|learnlm|robotics|computer-use|transcribe|custom-tools|banana|lyria|antigravity|deep-research/i;
+const NOT_CHAT_NAME = /nano banana|lyria|antigravity|deep research|transcribe|custom tools|music|image|speech|audio/i;
+const RETIRED = /deprecated|rerouted|retired|discontinued|sunset/i;
 
 const PREVIEW = /preview|exp|latest/i;
+
+/** The id, name and description rules alone; also applied to a catalog saved by an older build. */
+export function isChatModelInfo(m: { id: string; displayName?: string; description?: string }): boolean {
+  if (!/^gemini-/i.test(m.id) || NOT_CHAT_ID.test(m.id)) return false;
+  if (NOT_CHAT_NAME.test(m.displayName ?? '')) return false;
+  if (RETIRED.test(m.displayName ?? '') || RETIRED.test(m.description ?? '')) return false;
+  return true;
+}
+
+/** True when a raw entry is a current Gemini text model worth offering. */
+export function isChatModel(m: RawGeminiModel): boolean {
+  if (!m.name || !m.supportedGenerationMethods?.includes('generateContent')) return false;
+  return isChatModelInfo({ ...m, id: m.name.replace(/^models\//, '') });
+}
 
 /** Major.minor version parsed from an id like gemini-2.5-flash-lite; 0 when absent. */
 export function versionOf(id: string): number {
@@ -41,14 +67,14 @@ export function versionOf(id: string): number {
   return m ? parseFloat(m[1]) : 0;
 }
 
-/** Reduce the raw list to chat models, newest first, stable before preview, then by id. */
+/** Reduce the raw list to current Gemini chat models, newest first, stable before preview, then by id. */
 export function selectChatModels(raw: RawGeminiModel[]): GeminiModelInfo[] {
   const seen = new Set<string>();
   const out: GeminiModelInfo[] = [];
   for (const m of raw) {
-    if (!m.name || !m.supportedGenerationMethods?.includes('generateContent')) continue;
+    if (!isChatModel(m)) continue;
     const id = m.name.replace(/^models\//, '');
-    if (NOT_CHAT.test(id) || seen.has(id)) continue;
+    if (seen.has(id)) continue;
     seen.add(id);
     out.push({ id, displayName: m.displayName || id, description: m.description || '' });
   }
@@ -60,5 +86,6 @@ export function selectChatModels(raw: RawGeminiModel[]): GeminiModelInfo[] {
 
 /** The options the dropdown shows: the loaded catalog when it has models, else the built-in list. */
 export function modelOptions(catalog: ModelCatalog | undefined): GeminiModelInfo[] {
-  return catalog && catalog.models.length > 0 ? catalog.models : FALLBACK_MODELS;
+  const models = catalog?.models.filter(isChatModelInfo) ?? [];
+  return models.length > 0 ? models : FALLBACK_MODELS;
 }

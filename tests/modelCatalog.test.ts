@@ -19,6 +19,23 @@ describe('selectChatModels', () => {
         expect(out[0]).toEqual({ id: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', description: 'models/gemini-2.5-flash desc' });
     });
 
+    it('drops other families, task-tuned variants and retired models even when they accept generateContent', () => {
+        const out = selectChatModels([
+            raw('models/gemini-3.5-flash', ['generateContent'], 'Gemini 3.5 Flash'),
+            raw('models/nano-banana-2.1', ['generateContent'], 'Nano Banana 2.1'),
+            raw('models/gemini-3-pro-image-preview', ['generateContent'], 'Nano Banana Pro'),
+            raw('models/lyria-3.5', ['generateContent'], 'Lyria 3.5'),
+            raw('models/antigravity-agent-preview-09-2026', ['generateContent'], 'Antigravity Agent Preview'),
+            raw('models/deep-research-max-preview-04-21-2026', ['generateContent'], 'Deep Research Max Preview (Apr-21-2026)'),
+            raw('models/gemini-3.5-transcribe', ['generateContent'], 'Gemini 3.5 Transcribe'),
+            raw('models/gemini-3.1-pro-preview-custom-tools', ['generateContent'], 'Gemini 3.1 Pro Preview Custom Tools'),
+            { name: 'models/deep-research-pro-preview-12-2025', displayName: 'Deep Research Pro Preview (Dec-12-2025) [Rerouted]', description: 'Deprecated preview agent; automatically rerouting traffic', supportedGenerationMethods: ['generateContent'] },
+            { name: 'models/gemini-2.0-flash', displayName: 'Gemini 2.0 Flash', description: 'Deprecated. Use Gemini 2.5 Flash.', supportedGenerationMethods: ['generateContent'] },
+            raw('models/gemini-flash-latest', ['generateContent'], 'Gemini Flash Latest'),
+        ]);
+        expect(out.map(m => m.id)).toEqual(['gemini-3.5-flash', 'gemini-flash-latest']);
+    });
+
     it('orders newest version first, stable before preview, then by id', () => {
         const out = selectChatModels([
             raw('models/gemini-2.0-flash'),
@@ -48,8 +65,18 @@ describe('modelOptions', () => {
     it('uses the built-in list until a catalog with models exists', () => {
         expect(modelOptions(undefined)).toBe(FALLBACK_MODELS);
         expect(modelOptions({ fetchedAt: 1, models: [] })).toBe(FALLBACK_MODELS);
-        const models = [{ id: 'x', displayName: 'X', description: '' }];
-        expect(modelOptions({ fetchedAt: 1, models })).toBe(models);
+        const models = [{ id: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro', description: '' }];
+        expect(modelOptions({ fetchedAt: 1, models })).toEqual(models);
+    });
+
+    it('re-applies the chat filter to a catalog saved before the filter existed', () => {
+        const saved = [
+            { id: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro', description: '' },
+            { id: 'lyria-3.5', displayName: 'Lyria 3.5', description: 'Music Generation model' },
+            { id: 'nano-banana-2.1', displayName: 'Nano Banana 2.1', description: '' },
+        ];
+        expect(modelOptions({ fetchedAt: 1, models: saved }).map(m => m.id)).toEqual(['gemini-2.5-pro']);
+        expect(modelOptions({ fetchedAt: 1, models: saved.slice(1) })).toBe(FALLBACK_MODELS);
     });
 });
 
