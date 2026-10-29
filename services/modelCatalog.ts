@@ -36,12 +36,13 @@ export interface RawGeminiModel {
  * but are the wrong tool for a text analysis. Rules, checked on the id and the display name
  * (the id naming is not consistent across families):
  * - only the Gemini text family (`gemini-…`), so Lyria, Nano Banana, Antigravity, Deep
- *   Research, Imagen, Veo and Gemma are out by id alone;
+ *   Research, Imagen, Veo and Gemma are out by id alone; Gemini Omni is a video model
+ *   (ai.google.dev/gemini-api/docs/models/gemini-omni-flash) and is excluded by name;
  * - no task-specific variants: image, tts, audio, live, transcribe, custom tools, computer
  *   use, robotics, embeddings;
  * - nothing Google marks as deprecated, rerouted or retired in its name or description.
  */
-const NOT_CHAT_ID = /embed|imagen|image|veo|tts|audio|live|aqa|learnlm|robotics|computer-use|transcribe|custom-tools|banana|lyria|antigravity|deep-research/i;
+const NOT_CHAT_ID = /embed|imagen|image|veo|omni|tts|audio|live|aqa|learnlm|robotics|computer-use|transcribe|custom-tools|banana|lyria|antigravity|deep-research/i;
 const NOT_CHAT_NAME = /nano banana|lyria|antigravity|deep research|transcribe|custom tools|music|image|speech|audio/i;
 const RETIRED = /deprecated|rerouted|retired|discontinued|sunset/i;
 

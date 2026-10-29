@@ -31,6 +31,7 @@ describe('selectChatModels', () => {
             raw('models/gemini-3.1-pro-preview-custom-tools', ['generateContent'], 'Gemini 3.1 Pro Preview Custom Tools'),
             { name: 'models/deep-research-pro-preview-12-2025', displayName: 'Deep Research Pro Preview (Dec-12-2025) [Rerouted]', description: 'Deprecated preview agent; automatically rerouting traffic', supportedGenerationMethods: ['generateContent'] },
             { name: 'models/gemini-2.0-flash', displayName: 'Gemini 2.0 Flash', description: 'Deprecated. Use Gemini 2.5 Flash.', supportedGenerationMethods: ['generateContent'] },
+            raw('models/gemini-omni-1.1-flash', ['generateContent'], 'Gemini Omni 1.1 Flash'),
             raw('models/gemini-flash-latest', ['generateContent'], 'Gemini Flash Latest'),
         ]);
         expect(out.map(m => m.id)).toEqual(['gemini-3.5-flash', 'gemini-flash-latest']);
