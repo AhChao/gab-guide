@@ -21,10 +21,19 @@
 ## 部署 / 上版
 
 ```bash
+export XDG_CONFIG_HOME=~/.config/wrangler-personal     # 個人帳號專用的 wrangler 登入目錄（見下方）
 npx wrangler login                                    # token 過期才需要（互動式 OAuth）
 export CLOUDFLARE_ACCOUNT_ID=<見 info/deploy-credentials.md>
 npm run deploy                                        # = npm run build && npx wrangler pages deploy
 ```
+
+**wrangler 登入目錄要跟其他帳號隔開。** wrangler 的 OAuth token 存在單一全域檔
+（macOS 預設 `~/Library/Preferences/.wrangler/config/default.toml`），同一台機器若也用 wrangler 部署別的
+Cloudflare 帳號，`wrangler login` 會互相覆蓋，`wrangler pages deploy` 就回 `Authentication error [code: 10000]`
+（2026-10-21 實際踩到：全域 token 是另一個帳號的）。解法是把這個帳號的登入放在自己的
+`XDG_CONFIG_HOME`（wrangler 會讀 `$XDG_CONFIG_HOME/.wrangler/config/default.toml`），部署時帶同一個環境變數即可，
+兩邊的 token 互不影響、不用切來切去。`wrangler login --browser=false` 會印出授權網址，可以在任何瀏覽器開，
+callback 打回本機 8976 port。
 
 `wrangler.toml` 的 `pages_build_output_dir = "dist"` 讓 `wrangler pages deploy` 不必帶目錄參數。首次執行 `wrangler pages deploy` 會提示建立 `gab-guide` 專案，選 create 即可。
 
